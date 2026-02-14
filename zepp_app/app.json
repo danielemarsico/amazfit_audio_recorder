@@ -48,6 +48,19 @@
           "path": "app-side/index"
         }
       }
+    },
+    "bip6": {
+      "module": {
+        "page": {
+          "pages": [
+            "page/gt/home/index.page",
+            "page/gt/home/audiolist.page"
+          ]
+        },
+        "app-side": {
+          "path": "app-side/index"
+        }
+      }
     }
   },
   "defaultLanguage": "en-US",
