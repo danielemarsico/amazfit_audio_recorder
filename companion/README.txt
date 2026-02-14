@@ -1,1 +1,0 @@
-This folder contains the Zepp App companion plugin. Adjust file system/save usage for the actual Zepp SDK environment.
