@@ -1,0 +1,12 @@
+{
+  "app": {
+    "appId": "com.example.audiomemo",
+    "appName": "Audio Memo (ZeppOS)",
+    "version": "1.0.0",
+    "type": "app"
+  },
+  "targets": [
+    "watch",
+    "app"
+  ]
+}
