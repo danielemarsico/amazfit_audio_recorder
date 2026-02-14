@@ -1,38 +1,26 @@
-import { readdirSync, unlinkSync } from '@zos/fs';
-import { playAudio } from '@zos/audio';
+import { readdirSync, rmSync } from '@zos/fs';
 
 const AUDIO_FOLDER = 'dudus';
 
 export function listAudioFiles() {
   try {
-    console.log('[audioController] Tentativo di leggere cartella:', AUDIO_FOLDER);
     const files = readdirSync({ path: AUDIO_FOLDER });
-    var items = files.map(fileName => ({ path: fileName, play: 'P',  delete: 'D' }));
-    return items;
+    if (!files || !Array.isArray(files)) return [];
+    return files;
   } catch (e) {
-    console.error('[audioController] Errore lettura cartella:', e);
+    console.log('[audioController] Error reading folder:', e);
     return [];
   }
 }
 
 export function deleteAudioFile(fileName) {
   try {
-    const fullPath = AUDIO_FOLDER + fileName;
-    console.log('[audioController] Eliminazione file:', fullPath);
-    unlinkSync({ path: fullPath });
+    const fullPath = AUDIO_FOLDER + '/' + fileName;
+    console.log('[audioController] Deleting file:', fullPath);
+    rmSync({ path: fullPath });
     return true;
   } catch (e) {
-    console.error('[audioController] Errore eliminazione file:', e);
+    console.log('[audioController] Error deleting file:', e);
     return false;
-  }
-}
-
-export function playAudioFile(fileName) {
-  try {
-    const fullPath = AUDIO_FOLDER + fileName;
-    console.log('[audioController] Riproduzione file:', fullPath);
-    playAudio({ path: fullPath });
-  } catch (e) {
-    console.error('[audioController] Errore riproduzione file:', e);
   }
 }

@@ -1,77 +1,170 @@
-import { createWidget, widget, align } from "@zos/ui";
-import { push } from "@zos/router";
+import { createWidget, widget, align, prop } from "@zos/ui";
+import { push, back, replace } from "@zos/router";
+import { create, id, codec } from "@zos/media";
 import { getDeviceInfo } from "@zos/device";
-import { listAudioFiles, deleteAudioFile, playAudioFile } from "./audioController.js";
+import { listAudioFiles, deleteAudioFile } from "./audioController.js";
 
 const { width, height } = getDeviceInfo();
+const FOLDER_PATH = "data://dudus/";
+
+const ROW_HEIGHT = 60;
+const BTN_W = 50;
+const PADDING = 10;
+const START_Y = 60;
+
+let player = null;
+let isPlaying = false;
+let activePlayBtn = null;
+
+function stopPlayer() {
+  if (player && isPlaying) {
+    try { player.stop(); } catch (e) {}
+    isPlaying = false;
+    if (activePlayBtn) {
+      activePlayBtn.setProperty(prop.TEXT, "P");
+      activePlayBtn = null;
+    }
+  }
+}
+
+function playFile(filePath, playBtn) {
+  if (isPlaying) {
+    stopPlayer();
+    // If same button tapped again, just stop
+    if (activePlayBtn === playBtn) return;
+  }
+
+  player = create(id.PLAYER);
+  activePlayBtn = playBtn;
+
+  player.addEventListener(player.event.PREPARE, function (result) {
+    if (result) {
+      player.start();
+      isPlaying = true;
+      playBtn.setProperty(prop.TEXT, "S");
+    } else {
+      console.log("[audiolist] Player prepare failed");
+    }
+  });
+
+  player.addEventListener(player.event.COMPLETE, function () {
+    isPlaying = false;
+    playBtn.setProperty(prop.TEXT, "P");
+    activePlayBtn = null;
+  });
+
+  player.setSource(player.source.FILE, { file: filePath });
+  player.prepare();
+}
 
 Page({
   build() {
-    const items = listAudioFiles()
+    const files = listAudioFiles();
 
-    const rootContainer = createWidget(widget.VIRTUAL_CONTAINER, {
-      layout: {
-        display: 'flex',
-        'flex-flow': 'column',
-        x: 0,
-        y: 0,
-        width: '100vw',
-        height: '100vh',
-        'justify-content': 'flex-start',
-        'align-items': 'center'
-      }
-    });
-
+    // Title
     createWidget(widget.TEXT, {
-      parent: rootContainer,
-      text: "Memo salvati:",
-      text_size: 48,
-      color: 0xffffff,
       x: 0,
-      y: 100,
+      y: PADDING,
       w: width,
-      h: 100,
+      h: 40,
+      text: "Recordings",
+      text_size: 28,
+      color: 0xffffff,
+      align_h: align.CENTER_H,
     });
 
-    createWidget(widget.SCROLL_LIST, {
-      parent: rootContainer,
-      x: 0,
-      y: 100,
-      w: width,
-      h: height - 100,
-      item_space: 20,
-      snap_to_center: false,
-      data_array: items,
-      data_count: items.length,
-      item_config: [
-        {
-          type_id: 1,
-          item_bg_color: 0x222222,
-          item_bg_radius: 10,
-          item_height: 30,
-          text_view: [
-            { x: 0,  y: 0, w: width-40, h: 30, key: 'path', color: 0xffffff, text_size: 24 }, // nome file
-            { x: width-40, y: 0, w: 20, h: 30, key: 'play', color: 0xffffff, text_size: 24 }, // Play
-            { x: width-20, y: 0, w: 20, h: 30, key: 'delete', color: 0xffffff, text_size: 24 }  // Delete
-          ],
-          text_view_count: 3
-        }
-      ],
-      item_config_count: 1,
-      item_click_func: (index, clickX, clickY) => {
-        const fileName = "";
-        console.log('[audioLIst] clicked file:');
-        // Coordinate Play
-        if (clickX > width * 0.6 && clickX < width * 0.6 + 60) {
-          playAudioFile(fileName);
-        }
-        // Coordinate Delete
-        else if (clickX > width * 0.7 && clickX < width * 0.7 + 60) {
-          if (deleteAudioFile(fileName)) {
-            push({ url: "page/gt/home/audiolist.page" }); // refresh lista
-          }
-        }
-      }
+    // Back button
+    const backBtnW = Math.floor(width * 0.3);
+    createWidget(widget.BUTTON, {
+      x: Math.floor((width - backBtnW) / 2),
+      y: height - 60,
+      w: backBtnW,
+      h: 40,
+      radius: 8,
+      normal_color: 0x444444,
+      press_color: 0x666666,
+      text: "BACK",
+      text_size: 18,
+      color: 0xffffff,
+      click_func: () => {
+        stopPlayer();
+        back();
+      },
     });
-  }
+
+    if (files.length === 0) {
+      createWidget(widget.TEXT, {
+        x: 0,
+        y: Math.floor(height / 2) - 20,
+        w: width,
+        h: 40,
+        text: "No recordings",
+        text_size: 24,
+        color: 0x888888,
+        align_h: align.CENTER_H,
+      });
+      return;
+    }
+
+    const textW = width - BTN_W * 2 - PADDING * 3;
+
+    for (let i = 0; i < files.length; i++) {
+      const fileName = files[i];
+      const y = START_Y + i * (ROW_HEIGHT + PADDING);
+
+      // Filename label - strip extension for display
+      const displayName = fileName.replace('.opus', '');
+      createWidget(widget.TEXT, {
+        x: PADDING,
+        y: y,
+        w: textW,
+        h: ROW_HEIGHT,
+        text: displayName,
+        text_size: 18,
+        color: 0xffffff,
+        align_v: align.CENTER_V,
+      });
+
+      // Play button
+      const playBtn = createWidget(widget.BUTTON, {
+        x: PADDING + textW,
+        y: y,
+        w: BTN_W,
+        h: ROW_HEIGHT,
+        radius: 8,
+        normal_color: 0x2196f3,
+        press_color: 0x64b5f6,
+        text: "P",
+        text_size: 20,
+        color: 0xffffff,
+        click_func: () => {
+          playFile(FOLDER_PATH + fileName, playBtn);
+        },
+      });
+
+      // Delete button
+      createWidget(widget.BUTTON, {
+        x: PADDING + textW + BTN_W,
+        y: y,
+        w: BTN_W,
+        h: ROW_HEIGHT,
+        radius: 8,
+        normal_color: 0xf44336,
+        press_color: 0xef9a9a,
+        text: "X",
+        text_size: 20,
+        color: 0xffffff,
+        click_func: () => {
+          stopPlayer();
+          deleteAudioFile(fileName);
+          replace({ url: "page/gt/home/audiolist.page" });
+        },
+      });
+    }
+  },
+
+  onDestroy() {
+    stopPlayer();
+    player = null;
+  },
 });
