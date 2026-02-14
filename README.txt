@@ -1,27 +1,53 @@
-Audio Memo (ZeppOS) - Project Template
-======================================
+DuDu - Voice Memo App for Amazfit Smartwatches
+===============================================
 
-What you get:
-- ZeppOS watch app (auto-record on open, 30s limit)
-- Simple recordings list + playback + manual sync button
-- Companion plugin skeleton to receive transferred files on the phone
+A quick voice memo recorder for ZeppOS 3.0 smartwatches (Amazfit GT series).
+Open the app, and it immediately starts recording a 30-second voice memo.
 
-Files of interest:
-- app.json, app.js
-- lib/recorder.js
-- pages/index.page.js (auto-record)
-- pages/list.page.js (list + sync)
-- pages/play.page.js (playback + sync)
-- companion/index.js (phone-side plugin skeleton)
+Features
+--------
+- Instant recording: starts capturing audio the moment the app opens
+- Fixed 30-second duration with on-screen countdown
+- Manual early stop via the STOP button
+- OPUS codec for small file sizes at good quality (16 kHz)
+- Auto-generated filenames with timestamp (e.g. record_20260214_153045.opus)
+- Recordings stored locally in data://dudus/
+- Audio list page: browse all saved recordings
+- Playback: tap a recording to play it back on the watch
+- Delete: remove recordings you no longer need
+- Clean resource cleanup when leaving the app mid-recording
 
-Build / deploy notes:
-1. Place the `zepp` folder content into your ZeppOS app project structure.
-2. Use the Amazfit/Zepp developer tools to package and sideload the watch app.
-3. The companion plugin code is a skeleton: adjust `hmApp.fileSystem.save` usage to the real Zepp App SDK APIs available in your environment.
-4. Ensure microphone permissions / device compatibility (ZeppOS >= 3.0).
-5. Test transfer on a paired device.
+Project Structure
+-----------------
+zepp_app/
+  app.js                          - App lifecycle (init/destroy)
+  app.json                        - App config, page routes, mic permission
+  page/gt/home/
+    index.page.js                 - Main page: auto-record + countdown UI
+    audiolist.page.js             - Saved recordings list with play/delete
+    audioController.js            - File operations (list, play, delete)
+    index.page.r.layout.js        - Round screen layout
+    index.page.s.layout.js        - Square screen layout
+  assets/gt.r/, assets/gt.s/      - Icons and images per screen shape
+  page/i18n/                      - Translations (EN, ZH)
 
-Limitations & Next steps:
-- The companion plugin code is a template — Zepp Mobile SDK details vary by version and region. Adapt file paths & APIs.
-- Add UI polish, progress indicators, and error handling for production.
-- Consider implementing automatic sync on recording completion (call hmApp.transferFile from recorder stop).
+Requirements
+------------
+- ZeppOS >= 3.0
+- Device with microphone (Amazfit GT series)
+- Microphone permission (data:os.mic.record) - declared in app.json
+- Node.js + zeus CLI for building and simulator testing
+
+Build & Deploy
+--------------
+1. Install dependencies:  cd zepp_app && npm install
+2. Build:                 zeus build
+3. Run in simulator:      zeus dev
+4. Sideload to watch via Zepp developer tools
+
+Limitations & Next Steps
+------------------------
+- Companion plugin (companion/) is a skeleton for phone-side file sync
+- Audio list page play/delete hit detection needs refinement
+- No automatic sync to phone yet (could trigger on recording stop)
+- Recording duration is fixed at 30s (configurable via RECORD_DURATION constant)

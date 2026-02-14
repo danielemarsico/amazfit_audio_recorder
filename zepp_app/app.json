@@ -30,6 +30,9 @@
             "page/gt/home/index.page",
             "page/gt/home/audiolist.page"
           ]
+        },
+        "app-side": {
+          "path": "app-side/index"
         }
       }
     },
@@ -40,6 +43,9 @@
             "page/gt/home/index.page",
             "page/gt/home/audiolist.page"
           ]
+        },
+        "app-side": {
+          "path": "app-side/index"
         }
       }
     }

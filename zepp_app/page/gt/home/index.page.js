@@ -3,10 +3,12 @@ import { setTimeout, clearTimeout, setInterval, clearInterval } from "@zos/timer
 import { getDeviceInfo } from "@zos/device";
 import { mkdirSync } from '@zos/fs';
 import { push } from "@zos/router";
+import TransferFile from "@zos/ble/TransferFile";
 import AutoGUI from "@silver-zepp/autogui";
 
 const RECORD_DURATION = 30;
 const FOLDER_PATH = 'data://dudus/';
+const transferFile = new TransferFile();
 
 const { width, height } = getDeviceInfo();
 
@@ -15,6 +17,7 @@ let stopTimeout = null;
 let countdownInterval = null;
 let countdownValue = RECORD_DURATION;
 let isRecording = false;
+let currentFilename = null;
 
 let gui = null;
 let my_text = null;
@@ -60,11 +63,24 @@ function stopRecording() {
     console.log("Error stopping recorder:", err);
   }
 
+  // Auto-transfer to phone via Zepp app
+  if (currentFilename) {
+    try {
+      transferFile.sendFile(currentFilename, {
+        type: "voice_memo",
+        recordedAt: Date.now().toString()
+      });
+      console.log("File transfer initiated:", currentFilename);
+    } catch (err) {
+      console.log("File transfer error:", err);
+    }
+  }
+
   if (rec_button) {
     rec_button.update({ text: "Done" });
   }
   if (my_text) {
-    my_text.update({ text: "Saved" });
+    my_text.update({ text: "Syncing..." });
   }
 }
 
@@ -76,13 +92,13 @@ Page({
 
     ensureFolder();
 
-    const filename = generateFilename();
-    console.log("Saving to file:", filename);
+    currentFilename = generateFilename();
+    console.log("Saving to file:", currentFilename);
 
     // Create recorder and configure
     recorder = create(id.RECORDER);
     recorder.setFormat(codec.OPUS, {
-      target_file: filename
+      target_file: currentFilename
     });
 
     // Build UI
@@ -97,7 +113,7 @@ Page({
     // Start recording immediately
     recorder.start();
     isRecording = true;
-    console.log("Recording started ->", filename);
+    console.log("Recording started ->", currentFilename);
 
     // Countdown display
     countdownInterval = setInterval(() => {
