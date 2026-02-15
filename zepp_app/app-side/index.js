@@ -1,56 +1,37 @@
-import { BaseSideService } from "@zos/app-service";
-import TransferFile from "@zos/ble/TransferFile";
+import { BaseSideService } from "@zeppos/zml/base-side";
+import { settingsLib } from "@zeppos/zml/base-side";
 
-const transferFile = new TransferFile();
+AppSideService(
+  BaseSideService({
+    onInit() {
+      console.log("[side] DuDu side service started");
+    },
 
-AppSideService({
-  onInit() {
-    console.log("DuDu side service started");
+    onReceivedFile(fileObject) {
+      console.log("[side] File received:", JSON.stringify(fileObject));
 
-    // Listen for incoming file transfers from the watch
-    transferFile.onFile((fileObject) => {
-      const { fileName, filePath, params } = fileObject;
-      console.log("Received file from watch:", fileName);
-      console.log("File path:", filePath);
-      console.log("Params:", JSON.stringify(params));
+      const fileName = fileObject.params?.fileName || fileObject.fileName || "unknown";
+      const filePath = fileObject.filePath || "";
 
-      // File is automatically saved to the Zepp app sandbox
-      // Log receipt for debugging
+      console.log("[side] fileName:", fileName, "filePath:", filePath);
+
       try {
-        const received = settings.settingsStorage.getItem("dudu_files") || "[]";
-        const list = JSON.parse(received);
+        const stored = settingsLib.getItem("dudu_files") || "[]";
+        const list = JSON.parse(stored);
         list.push({
           fileName: fileName,
+          filePath: filePath,
           receivedAt: Date.now(),
-          params: params || {}
         });
-        settings.settingsStorage.setItem("dudu_files", JSON.stringify(list));
-        console.log("File metadata saved. Total files:", list.length);
+        settingsLib.setItem("dudu_files", JSON.stringify(list));
+        console.log("[side] Metadata saved. Total files:", list.length);
       } catch (e) {
-        console.log("Error saving file metadata:", e);
+        console.log("[side] settingsLib error:", e);
       }
-    });
+    },
 
-    // Listen for messages from the watch
-    this.onMessage = (message) => {
-      console.log("Message from watch:", JSON.stringify(message));
-
-      if (message.type === "ping") {
-        return { type: "pong", status: "connected" };
-      }
-
-      if (message.type === "list_files") {
-        try {
-          const stored = settings.settingsStorage.getItem("dudu_files") || "[]";
-          return { type: "file_list", files: JSON.parse(stored) };
-        } catch (e) {
-          return { type: "file_list", files: [] };
-        }
-      }
-    };
-  },
-
-  onDestroy() {
-    console.log("DuDu side service destroyed");
-  }
-});
+    onDestroy() {
+      console.log("[side] DuDu side service destroyed");
+    },
+  })
+);

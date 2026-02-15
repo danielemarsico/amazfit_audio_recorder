@@ -3,7 +3,8 @@ import { create, id, codec } from "@zos/media";
 import { push } from "@zos/router";
 import { setTimeout, clearTimeout, setInterval, clearInterval } from "@zos/timer";
 import { getDeviceInfo } from "@zos/device";
-import { mkdirSync, rmSync } from "@zos/fs";
+import { mkdirSync, rmSync, readdirSync } from "@zos/fs";
+import TransferFile from "@zos/ble/TransferFile";
 
 const RECORD_DURATION = 30;
 const FOLDER_PATH = "data://dudus/";
@@ -24,6 +25,7 @@ let buttonWidget = null;
 let playButtonWidget = null;
 let listButtonWidget = null;
 let cancelButtonWidget = null;
+let syncButtonWidget = null;
 
 function ensureFolder() {
   try {
@@ -31,6 +33,93 @@ function ensureFolder() {
   } catch (e) {
     // folder may already exist
   }
+}
+
+let transferFileInstance = null;
+
+function getOutbox() {
+  if (!transferFileInstance) {
+    transferFileInstance = new TransferFile();
+  }
+  return transferFileInstance.getOutbox();
+}
+
+function transferAllFiles() {
+  let files;
+  try {
+    files = readdirSync({ path: "dudus" });
+    console.log("[transfer] readdirSync result:", JSON.stringify(files));
+  } catch (e) {
+    console.log("[transfer] readdirSync error:", e);
+    if (countdownWidget) {
+      countdownWidget.setProperty(prop.TEXT, "Read error");
+    }
+    return;
+  }
+
+  if (!files || !Array.isArray(files) || files.length === 0) {
+    console.log("[transfer] No files to transfer");
+    if (countdownWidget) {
+      countdownWidget.setProperty(prop.TEXT, "No files");
+    }
+    return;
+  }
+
+  let outbox;
+  try {
+    outbox = getOutbox();
+    console.log("[transfer] Outbox ready");
+  } catch (e) {
+    console.log("[transfer] Outbox error:", e);
+    if (countdownWidget) {
+      countdownWidget.setProperty(prop.TEXT, "BLE error");
+    }
+    return;
+  }
+
+  let pending = files.length;
+  console.log("[transfer] Transferring", pending, "file(s)");
+
+  files.forEach((fileName) => {
+    const filePath = "data://dudus/" + fileName;
+    console.log("[transfer] Queuing:", filePath);
+
+    try {
+      const fileObject = outbox.enqueueFile(filePath, { fileName: fileName });
+      console.log("[transfer] Enqueued OK, readyState:", fileObject.readyState);
+
+      fileObject.on("progress", (event) => {
+        console.log("[transfer] Progress:", fileName, event.data.loadedSize, "/", event.data.fileSize);
+      });
+
+      fileObject.on("change", (event) => {
+        console.log("[transfer] State change:", fileName, event.data.readyState);
+        if (event.data.readyState === "transferring") {
+          if (countdownWidget) {
+            countdownWidget.setProperty(prop.TEXT, "Sending...");
+          }
+        } else if (event.data.readyState === "transferred") {
+          console.log("[transfer] Sent:", fileName);
+          pending--
+          if (pending <= 0 && countdownWidget) {
+            countdownWidget.setProperty(prop.TEXT, "Synced!");
+          }
+        } else if (event.data.readyState === "error") {
+          console.log("[transfer] Transfer error:", fileName);
+          pending--;
+          if (pending <= 0 && countdownWidget) {
+            countdownWidget.setProperty(prop.TEXT, "Sync error");
+          }
+        }
+      });
+    } catch (e) {
+      console.log("[transfer] enqueueFile error:", fileName, e);
+      pending--;
+      if (pending <= 0 && countdownWidget) {
+        countdownWidget.setProperty(prop.TEXT, "Queue error");
+      }
+    }
+  });
 }
 
 function generateFilename() {
@@ -52,6 +141,9 @@ function showIdleButtons(showPlay) {
   if (listButtonWidget) {
     listButtonWidget.setProperty(prop.VISIBLE, true);
   }
+  if (syncButtonWidget) {
+    syncButtonWidget.setProperty(prop.VISIBLE, true);
+  }
   if (cancelButtonWidget) {
     cancelButtonWidget.setProperty(prop.VISIBLE, false);
   }
@@ -63,6 +155,9 @@ function showRecordingButtons() {
   }
   if (listButtonWidget) {
     listButtonWidget.setProperty(prop.VISIBLE, false);
+  }
+  if (syncButtonWidget) {
+    syncButtonWidget.setProperty(prop.VISIBLE, false);
   }
   if (cancelButtonWidget) {
     cancelButtonWidget.setProperty(prop.VISIBLE, true);
@@ -322,14 +417,19 @@ Page({
 
     playButtonWidget.setProperty(prop.VISIBLE, false);
 
-    // List button - navigate to recordings list
-    const listBtnW = Math.floor(width * 0.4);
-    const listBtnH = 40;
+    // Bottom buttons: LIST and SYNC side by side
+    const bottomBtnW = Math.floor(width * 0.35);
+    const bottomBtnH = 40;
+    const bottomBtnY = btnY + btnSize + Math.floor(btnSize * 0.2);
+    const bottomGap = Math.floor(width * 0.04);
+    const bottomLeftX = Math.floor(width / 2 - bottomBtnW - bottomGap / 2);
+    const bottomRightX = Math.floor(width / 2 + bottomGap / 2);
+
     listButtonWidget = createWidget(widget.BUTTON, {
-      x: Math.floor((width - listBtnW) / 2),
-      y: btnY + btnSize + Math.floor(btnSize * 0.2),
-      w: listBtnW,
-      h: listBtnH,
+      x: bottomLeftX,
+      y: bottomBtnY,
+      w: bottomBtnW,
+      h: bottomBtnH,
       radius: 8,
       normal_color: 0x444444,
       press_color: 0x666666,
@@ -342,6 +442,26 @@ Page({
       },
     });
     listButtonWidget.setProperty(prop.VISIBLE, false);
+
+    syncButtonWidget = createWidget(widget.BUTTON, {
+      x: bottomRightX,
+      y: bottomBtnY,
+      w: bottomBtnW,
+      h: bottomBtnH,
+      radius: 8,
+      normal_color: 0x4caf50,
+      press_color: 0x81c784,
+      text: "SYNC",
+      text_size: 18,
+      color: 0xffffff,
+      click_func: () => {
+        if (countdownWidget) {
+          countdownWidget.setProperty(prop.TEXT, "Syncing...");
+        }
+        transferAllFiles();
+      },
+    });
+    syncButtonWidget.setProperty(prop.VISIBLE, false);
 
     // Start first recording immediately
     startNewRecording();
@@ -356,6 +476,7 @@ Page({
     buttonWidget = null;
     playButtonWidget = null;
     listButtonWidget = null;
+    syncButtonWidget = null;
     cancelButtonWidget = null;
   },
 });

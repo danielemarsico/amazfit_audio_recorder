@@ -1,7 +1,7 @@
 {
   "configVersion": "v2",
   "app": {
-    "appId": 1000001,
+    "appId": 1106330,
     "appName": "DuDu",
     "appType": "app",
     "version": {
@@ -13,7 +13,9 @@
     "description": "Voice memo recorder"
   },
   "permissions": [
-    "data:os.mic.record"
+    "data:os.mic.record",
+    "data:os.device.info",
+    "device:os.mic"
   ],
   "runtime": {
     "apiVersion": {
@@ -24,6 +26,17 @@
   },
   "targets": {
     "gt.r": {
+      "platforms": [
+        { "name": "gtr4", "deviceSource": 7930112 },
+        { "name": "gtr4v2", "deviceSource": 7930113 },
+        { "name": "gtr4v3", "deviceSource": 7864577 },
+        { "name": "gtr3pro", "deviceSource": 229 },
+        { "name": "gtr3prov2", "deviceSource": 230 },
+        { "name": "gtr3", "deviceSource": 226 },
+        { "name": "gtr3v2", "deviceSource": 227 },
+        { "name": "gtrmini", "deviceSource": 250 },
+        { "name": "gtrminiv2", "deviceSource": 251 }
+      ],
       "module": {
         "page": {
           "pages": [
@@ -33,10 +46,21 @@
         },
         "app-side": {
           "path": "app-side/index"
+        },
+        "setting": {
+          "path": "setting/index"
         }
       }
     },
     "gt.s": {
+      "platforms": [
+        { "name": "gts4", "deviceSource": 7995648 },
+        { "name": "gts4v2", "deviceSource": 7995649 },
+        { "name": "gts4mini", "deviceSource": 246 },
+        { "name": "gts4miniv2", "deviceSource": 247 },
+        { "name": "gts3", "deviceSource": 224 },
+        { "name": "gts3v2", "deviceSource": 225 }
+      ],
       "module": {
         "page": {
           "pages": [
@@ -46,10 +70,18 @@
         },
         "app-side": {
           "path": "app-side/index"
+        },
+        "setting": {
+          "path": "setting/index"
         }
       }
     },
     "bip6": {
+      "platforms": [
+        { "name": "bip6v1", "deviceSource": 9765120 },
+        { "name": "bip6v2", "deviceSource": 9765121 },
+        { "name": "bip6v3", "deviceSource": 10158337 }
+      ],
       "module": {
         "page": {
           "pages": [
@@ -59,6 +91,9 @@
         },
         "app-side": {
           "path": "app-side/index"
+        },
+        "setting": {
+          "path": "setting/index"
         }
       }
     }

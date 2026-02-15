@@ -1,5 +1,5 @@
 {
-  "name": "helloworld",
+  "name": "dudu",
   "version": "1.0.0",
   "description": "",
   "main": "app.js",
@@ -12,7 +12,6 @@
     "@zeppos/device-types": "^3.0.0"
   },
   "dependencies": {
-    "@silver-zepp/autogui": "^1.2.9",
     "@zeppos/zml": "^0.0.38"
   }
 }
