@@ -3,8 +3,9 @@ import { create, id, codec } from "@zos/media";
 import { push } from "@zos/router";
 import { setTimeout, clearTimeout, setInterval, clearInterval } from "@zos/timer";
 import { getDeviceInfo } from "@zos/device";
-import { mkdirSync, rmSync, readdirSync } from "@zos/fs";
+import { mkdirSync, rmSync, readdirSync, readFileSync } from "@zos/fs";
 import TransferFile from "@zos/ble/TransferFile";
+import { BasePage } from "@zeppos/zml/base-page";
 
 const RECORD_DURATION = 30;
 const FOLDER_PATH = "data://dudus/";
@@ -118,6 +119,105 @@ function transferAllFiles() {
       if (pending <= 0 && countdownWidget) {
         countdownWidget.setProperty(prop.TEXT, "Queue error");
       }
+    }
+  });
+}
+
+const B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+function arrayBufferToBase64(buffer) {
+  const bytes = new Uint8Array(buffer);
+  let result = "";
+  const len = bytes.length;
+  for (let i = 0; i < len; i += 3) {
+    const a = bytes[i];
+    const b = i + 1 < len ? bytes[i + 1] : 0;
+    const c = i + 2 < len ? bytes[i + 2] : 0;
+    result += B64[a >> 2];
+    result += B64[((a & 3) << 4) | (b >> 4)];
+    result += i + 1 < len ? B64[((b & 15) << 2) | (c >> 6)] : "=";
+    result += i + 2 < len ? B64[c & 63] : "=";
+  }
+  return result;
+}
+
+let pageRequest = null;
+
+function uploadAllFiles() {
+  let files;
+  try {
+    files = readdirSync({ path: "dudus" });
+  } catch (e) {
+    console.log("[upload] readdirSync error:", e);
+    if (countdownWidget) {
+      countdownWidget.setProperty(prop.TEXT, "Read error");
+    }
+    return;
+  }
+
+  if (!files || !Array.isArray(files) || files.length === 0) {
+    if (countdownWidget) {
+      countdownWidget.setProperty(prop.TEXT, "No files");
+    }
+    return;
+  }
+
+  if (!pageRequest) {
+    console.log("[upload] messaging not ready");
+    if (countdownWidget) {
+      countdownWidget.setProperty(prop.TEXT, "Not ready");
+    }
+    return;
+  }
+
+  let pending = files.length;
+  console.log("[upload] Uploading", pending, "file(s)");
+
+  if (countdownWidget) {
+    countdownWidget.setProperty(prop.TEXT, "Uploading...");
+  }
+
+  files.forEach((fileName) => {
+    try {
+      const data = readFileSync({ path: "dudus/" + fileName });
+      if (!data) {
+        console.log("[upload] readFileSync returned null:", fileName);
+        pending--;
+        return;
+      }
+      console.log("[upload] Read", fileName, "size:", data.byteLength);
+
+      const base64 = arrayBufferToBase64(data);
+      console.log("[upload] Base64 length:", base64.length);
+
+      pageRequest({
+        method: "http.request",
+        params: {
+          url: "http://192.168.100.123:9000/upload",
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ fileName: fileName, data: base64 }),
+        },
+      })
+        .then(function (res) {
+          console.log("[upload] Success:", fileName);
+          pending--;
+          if (pending <= 0 && countdownWidget) {
+            countdownWidget.setProperty(prop.TEXT, "Uploaded!");
+          }
+        })
+        .catch(function (e) {
+          console.log("[upload] Error:", fileName, e);
+          pending--;
+          if (pending <= 0 && countdownWidget) {
+            countdownWidget.setProperty(prop.TEXT, "Upload error");
+          }
+        });
+    } catch (e) {
+      console.log("[upload] File error:", fileName, e);
+      pending--;
     }
   });
 }
@@ -345,8 +445,9 @@ const btnY = Math.floor(height / 2);
 const leftBtnX = Math.floor(width / 2 - btnSize - btnGap / 2);
 const rightBtnX = Math.floor(width / 2 + btnGap / 2);
 
-Page({
+Page(BasePage({
   build() {
+    pageRequest = this.request.bind(this);
     // Countdown text - top half of screen
     countdownWidget = createWidget(widget.TEXT, {
       x: 0,
@@ -455,10 +556,7 @@ Page({
       text_size: 18,
       color: 0xffffff,
       click_func: () => {
-        if (countdownWidget) {
-          countdownWidget.setProperty(prop.TEXT, "Syncing...");
-        }
-        transferAllFiles();
+        uploadAllFiles();
       },
     });
     syncButtonWidget.setProperty(prop.VISIBLE, false);
@@ -478,5 +576,6 @@ Page({
     listButtonWidget = null;
     syncButtonWidget = null;
     cancelButtonWidget = null;
+    pageRequest = null;
   },
-});
+}));
