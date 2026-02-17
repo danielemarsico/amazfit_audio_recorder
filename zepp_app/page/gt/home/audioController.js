@@ -295,13 +295,10 @@ export function syncAllFiles(requestFn, statusCallback) {
     checkBothDone();
   });
 
-  transferAllFiles((msg) => {
-    console.log("[sync] transfer status:", msg);
-  }, (ok) => {
-    transferDone = true;
-    transferOk = ok;
-    checkBothDone();
-  });
+  // BLE transfer disabled for now
+  transferDone = true;
+  transferOk = true;
+  checkBothDone();
 }
 
 export function syncSingleFile(fileName, requestFn, statusCallback) {
@@ -366,42 +363,10 @@ export function syncSingleFile(fileName, requestFn, statusCallback) {
     }
   }
 
-  // BLE transfer
-  let transferTimeout = null;
-  try {
-    const outbox = getOutbox();
-    const filePath = FOLDER_PATH + fileName;
-    const fileObject = outbox.enqueueFile(filePath, { fileName: fileName });
-    console.log("[sync] Transfer enqueued:", fileName);
-
-    transferTimeout = setTimeout(() => {
-      if (!transferDone) {
-        console.log("[sync] Transfer timeout:", fileName);
-        transferDone = true;
-        checkBothDone();
-      }
-    }, 15000);
-
-    fileObject.on("change", (event) => {
-      if (event.data.readyState === "transferred") {
-        console.log("[sync] Transfer OK:", fileName);
-        if (transferTimeout) clearTimeout(transferTimeout);
-        transferDone = true;
-        transferOk = true;
-        checkBothDone();
-      } else if (event.data.readyState === "error") {
-        console.log("[sync] Transfer error:", fileName);
-        if (transferTimeout) clearTimeout(transferTimeout);
-        transferDone = true;
-        checkBothDone();
-      }
-    });
-  } catch (e) {
-    console.log("[sync] Transfer enqueue error:", fileName, e);
-    if (transferTimeout) clearTimeout(transferTimeout);
-    transferDone = true;
-    checkBothDone();
-  }
+  // BLE transfer disabled for now
+  transferDone = true;
+  transferOk = true;
+  checkBothDone();
 }
 
 export function listAudioFiles() {

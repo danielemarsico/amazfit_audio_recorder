@@ -2,7 +2,7 @@ import { create, id, codec } from '@zos/media';
 import { writeFileSync } from '@zos/fs';
 import { setTimeout, clearTimeout } from '@zos/timer';
 
-const DEBUG = true;
+const DEBUG = false;
 
 // Minimal valid Opus silence frame (mono, 16kHz, 20ms)
 // TOC byte 0xF8 = config 31 (Hybrid, 20ms), mono, 0 frames code => silence
