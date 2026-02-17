@@ -43,6 +43,14 @@ function getUploadHeaders() {
   return headers;
 }
 
+function makeUploadBody(fileName, base64) {
+  const body = { fileName: fileName, data: base64 };
+  if (_apiKey) {
+    body.apiKey = _apiKey;
+  }
+  return JSON.stringify(body);
+}
+
 const AUDIO_FOLDER = 'dudus';
 
 export function ensureFolder() {
@@ -133,7 +141,7 @@ export function uploadAllFiles(requestFn, statusCallback, doneCallback) {
           url: _uploadUrl,
           method: "POST",
           headers: getUploadHeaders(),
-          body: JSON.stringify({ fileName: fileName, data: base64 }),
+          body: makeUploadBody(fileName, base64),
         },
       })
         .then(function (res) {
@@ -341,7 +349,7 @@ export function syncSingleFile(fileName, requestFn, statusCallback) {
             url: _uploadUrl,
             method: "POST",
             headers: getUploadHeaders(),
-            body: JSON.stringify({ fileName: fileName, data: base64 }),
+            body: makeUploadBody(fileName, base64),
           },
         })
           .then(function (res) {
