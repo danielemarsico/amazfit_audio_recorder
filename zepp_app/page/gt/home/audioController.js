@@ -13,8 +13,11 @@ export function getRecordDuration() {
   return _recordDuration;
 }
 
-export function fetchSettings(requestFn) {
-  if (!requestFn) return;
+export function fetchSettings(requestFn, callback) {
+  if (!requestFn) {
+    if (callback) callback();
+    return;
+  }
   requestFn({ method: "get.settings" })
     .then(function (result) {
       if (result && result.url) {
@@ -29,9 +32,11 @@ export function fetchSettings(requestFn) {
         _recordDuration = result.duration;
         console.log("[settings] Duration:", _recordDuration);
       }
+      if (callback) callback();
     })
     .catch(function (e) {
       console.log("[settings] fetch error:", e);
+      if (callback) callback();
     });
 }
 
@@ -295,7 +300,6 @@ export function destroyPlayer() {
 let recorder = null;
 let _isRecording = false;
 let _currentFilename = null;
-let _stopTimeout = null;
 let _countdownInterval = null;
 let _storedCallbacks = null;
 
@@ -325,20 +329,12 @@ export function startRecording(callbacks) {
       stopRecording();
     }
   }, 1000);
-
-  _stopTimeout = setTimeout(() => {
-    stopRecording();
-  }, _recordDuration * 1000);
 }
 
 export function stopRecording() {
   if (!_isRecording) return;
   _isRecording = false;
 
-  if (_stopTimeout) {
-    clearTimeout(_stopTimeout);
-    _stopTimeout = null;
-  }
   if (_countdownInterval) {
     clearInterval(_countdownInterval);
     _countdownInterval = null;
@@ -360,10 +356,6 @@ export function cancelRecording(callbacks) {
   if (!_isRecording) return;
   _isRecording = false;
 
-  if (_stopTimeout) {
-    clearTimeout(_stopTimeout);
-    _stopTimeout = null;
-  }
   if (_countdownInterval) {
     clearInterval(_countdownInterval);
     _countdownInterval = null;

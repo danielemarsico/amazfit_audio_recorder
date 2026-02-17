@@ -142,7 +142,6 @@ Page(BasePage({
     pauseDropWristScreenOff({ duration: 600000 });
 
     pageRequest = this.request.bind(this);
-    fetchSettings(pageRequest);
     // Countdown text - top half of screen
     countdownWidget = createWidget(widget.TEXT, {
       x: 0,
@@ -237,8 +236,13 @@ Page(BasePage({
     });
     listButtonWidget.setProperty(prop.VISIBLE, false);
 
-    // Start first recording immediately
-    doStartRecording();
+    // Fetch settings, then start first recording
+    fetchSettings(pageRequest, () => {
+      if (countdownWidget) {
+        countdownWidget.setProperty(prop.TEXT, getRecordDuration().toString());
+      }
+      doStartRecording();
+    });
   },
 
   onDestroy() {
