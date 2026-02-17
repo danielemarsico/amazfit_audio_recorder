@@ -7,7 +7,7 @@ export const FOLDER_PATH = "data://dudus/";
 
 let _recordDuration = 30;
 let _uploadUrl = "http://192.168.100.123:9000/upload";
-let _apiKey = "";
+let _apiKey = "TESTAPIKEY";
 
 export function getRecordDuration() {
   return _recordDuration;
@@ -91,22 +91,8 @@ export function arrayBufferToBase64(buffer) {
   return result;
 }
 
-export function uploadAllFiles(requestFn, statusCallback, doneCallback) {
-  let files;
-  try {
-    files = readdirSync({ path: AUDIO_FOLDER });
-  } catch (e) {
-    console.log("[upload] readdirSync error:", e);
-    statusCallback("Read error");
-    if (doneCallback) doneCallback(false);
-    return;
-  }
+export function uploadAllFiles(files,requestFn, statusCallback, doneCallback) {
 
-  if (!files || !Array.isArray(files) || files.length === 0) {
-    statusCallback("No files");
-    if (doneCallback) doneCallback(false);
-    return;
-  }
 
   if (!requestFn) {
     console.log("[upload] messaging not ready");
@@ -179,24 +165,7 @@ function getOutbox() {
   return transferFileInstance.getOutbox();
 }
 
-export function transferAllFiles(statusCallback, doneCallback) {
-  let files;
-  try {
-    files = readdirSync({ path: AUDIO_FOLDER });
-    console.log("[transfer] readdirSync result:", JSON.stringify(files));
-  } catch (e) {
-    console.log("[transfer] readdirSync error:", e);
-    statusCallback("Read error");
-    if (doneCallback) doneCallback(false);
-    return;
-  }
-
-  if (!files || !Array.isArray(files) || files.length === 0) {
-    console.log("[transfer] No files to transfer");
-    statusCallback("No files");
-    if (doneCallback) doneCallback(false);
-    return;
-  }
+export function transferAllFiles(files,statusCallback, doneCallback) {
 
   let outbox;
   try {
@@ -295,7 +264,7 @@ export function syncAllFiles(requestFn, statusCallback) {
 
   statusCallback("Syncing...");
 
-  uploadAllFiles(requestFn, (msg) => {
+  uploadAllFiles(files,requestFn, (msg) => {
     console.log("[sync] upload status:", msg);
   }, (ok) => {
     uploadDone = true;
@@ -303,7 +272,7 @@ export function syncAllFiles(requestFn, statusCallback) {
     checkBothDone();
   });
 
-  transferAllFiles((msg) => {
+  transferAllFiles(files,(msg) => {
     console.log("[sync] transfer status:", msg);
   }, (ok) => {
     transferDone = true;
