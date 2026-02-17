@@ -142,7 +142,7 @@ Page(BasePage({
     pauseDropWristScreenOff({ duration: 600000 });
 
     pageRequest = this.request.bind(this);
-    fetchSettings(pageRequest);
+    //fetchSettings(pageRequest);
     // Countdown text - top half of screen
     countdownWidget = createWidget(widget.TEXT, {
       x: 0,
