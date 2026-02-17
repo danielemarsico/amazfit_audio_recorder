@@ -1,6 +1,7 @@
 import { createWidget, widget, align, prop } from "@zos/ui";
 import { push, back, replace } from "@zos/router";
 import { getDeviceInfo } from "@zos/device";
+import { setPageBrightTime, pauseDropWristScreenOff } from "@zos/display";
 import { BasePage } from "@zeppos/zml/base-page";
 import {
   listAudioFiles, deleteAudioFile, syncAllFiles, fetchSettings, FOLDER_PATH,
@@ -52,6 +53,9 @@ function playFile(filePath, playBtn) {
 
 Page(BasePage({
   build() {
+    setPageBrightTime({ brightTime: 600000 });
+    pauseDropWristScreenOff({ duration: 600000 });
+
     const files = listAudioFiles();
     const pageRequest = this.request.bind(this);
     fetchSettings(pageRequest);

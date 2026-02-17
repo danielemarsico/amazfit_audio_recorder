@@ -1,6 +1,7 @@
 import { createWidget, widget, align, prop } from "@zos/ui";
 import { push } from "@zos/router";
 import { getDeviceInfo } from "@zos/device";
+import { setPageBrightTime, pauseDropWristScreenOff } from "@zos/display";
 import { BasePage } from "@zeppos/zml/base-page";
 import {
   getRecordDuration, syncSingleFile, fetchSettings,
@@ -137,6 +138,9 @@ const rightBtnX = Math.floor(width / 2 + btnGap / 2);
 
 Page(BasePage({
   build() {
+    setPageBrightTime({ brightTime: 600000 });
+    pauseDropWristScreenOff({ duration: 600000 });
+
     pageRequest = this.request.bind(this);
     fetchSettings(pageRequest);
     // Countdown text - top half of screen
