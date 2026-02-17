@@ -1,5 +1,6 @@
 import { create, id, codec } from '@zos/media';
 import { writeFileSync } from '@zos/fs';
+import { setTimeout, clearTimeout } from '@zos/timer';
 
 const DEBUG = true;
 
@@ -52,13 +53,56 @@ function createFakeRecorder() {
   };
 }
 
+function createFakePlayer() {
+  const listeners = {};
+  let playTimeout = null;
+
+  return {
+    event: { PREPARE: "PREPARE", COMPLETE: "COMPLETE" },
+    source: { FILE: "FILE" },
+    addEventListener(event, cb) {
+      listeners[event] = cb;
+    },
+    setSource(sourceType, options) {
+      console.log("[fakePlayer] setSource:", options.file);
+    },
+    prepare() {
+      console.log("[fakePlayer] prepare -> simulating success");
+      setTimeout(() => {
+        if (listeners.PREPARE) listeners.PREPARE(true);
+      }, 100);
+    },
+    start() {
+      console.log("[fakePlayer] start -> will complete in 2s");
+      playTimeout = setTimeout(() => {
+        console.log("[fakePlayer] playback complete");
+        if (listeners.COMPLETE) listeners.COMPLETE();
+      }, 2000);
+    },
+    stop() {
+      console.log("[fakePlayer] stop");
+      if (playTimeout) {
+        clearTimeout(playTimeout);
+        playTimeout = null;
+      }
+    },
+  };
+}
+
 export function createRecorder() {
   if (DEBUG) {
     console.log("[recorderFacade] Using FAKE recorder (DEBUG mode)");
     return createFakeRecorder();
   }
-  console.log("[recorderFacade] Using real recorder");
   return create(id.RECORDER);
+}
+
+export function createPlayer() {
+  if (DEBUG) {
+    console.log("[recorderFacade] Using FAKE player (DEBUG mode)");
+    return createFakePlayer();
+  }
+  return create(id.PLAYER);
 }
 
 export { codec };

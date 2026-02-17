@@ -3,7 +3,7 @@ import { push } from "@zos/router";
 import { getDeviceInfo } from "@zos/device";
 import { BasePage } from "@zeppos/zml/base-page";
 import {
-  RECORD_DURATION, syncSingleFile,
+  getRecordDuration, syncSingleFile, fetchSettings,
   playAudio, stopAudio, isAudioPlaying, destroyPlayer,
   startRecording, stopRecording, cancelRecording,
   isCurrentlyRecording, getCurrentFilename, destroyRecorder,
@@ -47,7 +47,7 @@ function doStartRecording() {
   showRecordingButtons();
 
   if (countdownWidget) {
-    countdownWidget.setProperty(prop.TEXT, RECORD_DURATION.toString());
+    countdownWidget.setProperty(prop.TEXT, getRecordDuration().toString());
   }
   if (buttonWidget) {
     buttonWidget.setProperty(prop.TEXT, "STOP");
@@ -138,13 +138,14 @@ const rightBtnX = Math.floor(width / 2 + btnGap / 2);
 Page(BasePage({
   build() {
     pageRequest = this.request.bind(this);
+    fetchSettings(pageRequest);
     // Countdown text - top half of screen
     countdownWidget = createWidget(widget.TEXT, {
       x: 0,
       y: Math.floor(height * 0.15),
       w: width,
       h: Math.floor(height * 0.3),
-      text: RECORD_DURATION.toString(),
+      text: getRecordDuration().toString(),
       text_size: 72,
       color: 0xffffff,
       align_h: align.CENTER_H,

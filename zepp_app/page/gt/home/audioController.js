@@ -1,12 +1,47 @@
 import { readdirSync, rmSync, mkdirSync, readFileSync } from '@zos/fs';
-import { create, id } from '@zos/media';
-import { createRecorder, codec } from './recorderFacade.js';
+import { createRecorder, createPlayer, codec } from './recorderFacade.js';
 import { setTimeout, clearTimeout, setInterval, clearInterval } from '@zos/timer';
 import TransferFile from "@zos/ble/TransferFile";
 
-export const RECORD_DURATION = 30;
 export const FOLDER_PATH = "data://dudus/";
-export const UPLOAD_URL = "http://192.168.100.123:9000/upload";
+
+let _recordDuration = 30;
+let _uploadUrl = "http://192.168.100.123:9000/upload";
+let _apiKey = "";
+
+export function getRecordDuration() {
+  return _recordDuration;
+}
+
+export function fetchSettings(requestFn) {
+  if (!requestFn) return;
+  requestFn({ method: "get.settings" })
+    .then(function (result) {
+      if (result && result.url) {
+        _uploadUrl = result.url;
+        console.log("[settings] URL:", _uploadUrl);
+      }
+      if (result && result.apiKey) {
+        _apiKey = result.apiKey;
+        console.log("[settings] API key set");
+      }
+      if (result && result.duration) {
+        _recordDuration = result.duration;
+        console.log("[settings] Duration:", _recordDuration);
+      }
+    })
+    .catch(function (e) {
+      console.log("[settings] fetch error:", e);
+    });
+}
+
+function getUploadHeaders() {
+  const headers = { "Content-Type": "application/json" };
+  if (_apiKey) {
+    headers["Authorization"] = "Bearer " + _apiKey;
+  }
+  return headers;
+}
 
 const AUDIO_FOLDER = 'dudus';
 
@@ -95,11 +130,9 @@ export function uploadAllFiles(requestFn, statusCallback, doneCallback) {
       requestFn({
         method: "http.request",
         params: {
-          url: UPLOAD_URL,
+          url: _uploadUrl,
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: getUploadHeaders(),
           body: JSON.stringify({ fileName: fileName, data: base64 }),
         },
       })
@@ -308,9 +341,9 @@ export function syncSingleFile(fileName, requestFn, statusCallback) {
         requestFn({
           method: "http.request",
           params: {
-            url: UPLOAD_URL,
+            url: _uploadUrl,
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: getUploadHeaders(),
             body: JSON.stringify({ fileName: fileName, data: base64 }),
           },
         })
@@ -402,7 +435,7 @@ let _isPlaying = false;
 export function playAudio(filename, callbacks) {
   stopAudio();
 
-  player = create(id.PLAYER);
+  player = createPlayer();
 
   player.addEventListener(player.event.PREPARE, function (result) {
     if (result) {
@@ -455,7 +488,7 @@ export function startRecording(callbacks) {
   stopAudio();
   _storedCallbacks = callbacks;
 
-  let countdownValue = RECORD_DURATION;
+  let countdownValue = _recordDuration;
   ensureFolder();
 
   _currentFilename = generateFilename();
@@ -480,7 +513,7 @@ export function startRecording(callbacks) {
 
   _stopTimeout = setTimeout(() => {
     stopRecording();
-  }, RECORD_DURATION * 1000);
+  }, _recordDuration * 1000);
 }
 
 export function stopRecording() {

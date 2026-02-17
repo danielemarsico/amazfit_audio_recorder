@@ -3,7 +3,7 @@ import { push, back, replace } from "@zos/router";
 import { getDeviceInfo } from "@zos/device";
 import { BasePage } from "@zeppos/zml/base-page";
 import {
-  listAudioFiles, deleteAudioFile, syncAllFiles, FOLDER_PATH,
+  listAudioFiles, deleteAudioFile, syncAllFiles, fetchSettings, FOLDER_PATH,
   playAudio, stopAudio, isAudioPlaying, destroyPlayer,
 } from "./audioController.js";
 
@@ -54,6 +54,7 @@ Page(BasePage({
   build() {
     const files = listAudioFiles();
     const pageRequest = this.request.bind(this);
+    fetchSettings(pageRequest);
 
     // Title
     createWidget(widget.TEXT, {

@@ -9,6 +9,70 @@ AppSettingsPage({
       files = [];
     }
 
+    const isEditing = props.settingsStorage.getItem("dudu_url_editing") === "true";
+
+    const urlDisplay = isEditing
+      ? TextInput({
+          label: "https://example.com/upload",
+          value: uploadUrl,
+          onChange: (val) => {
+            props.settingsStorage.setItem("dudu_upload_url", val);
+          },
+          subStyle: {
+            fontSize: "14px",
+            color: "#ffffff",
+            background: "#222222",
+            border: "1px solid #444444",
+            borderRadius: "8px",
+            padding: "8px 12px",
+          },
+        })
+      : Text(
+          {
+            paragraph: true,
+            style: {
+              fontSize: "14px",
+              color: "#ffffff",
+              background: "#222222",
+              border: "1px solid #444444",
+              borderRadius: "8px",
+              padding: "8px 12px",
+              wordBreak: "break-all",
+            },
+          },
+          uploadUrl || "(not set)"
+        );
+
+    const urlButton = isEditing
+      ? Button({
+          label: "Save",
+          style: {
+            fontSize: "13px",
+            borderRadius: "6px",
+            background: "#4caf50",
+            color: "white",
+            padding: "6px 14px",
+            marginTop: "8px",
+          },
+          click_func: () => {
+            props.settingsStorage.setItem("dudu_url_editing", "false");
+          },
+        })
+      : Button({
+          label: "Edit",
+          style: {
+            fontSize: "13px",
+            borderRadius: "6px",
+            background: "#2196f3",
+            color: "white",
+            padding: "6px 14px",
+            marginTop: "8px",
+          },
+          click_func: () => {
+            props.settingsStorage.setItem("dudu_url_editing", "true");
+          },
+        });
+
     const urlConfig = Section(
       {
         style: {
@@ -26,11 +90,21 @@ AppSettingsPage({
           },
           "Upload URL (HTTP POST)"
         ),
-        TextInput({
-          label: "https://example.com/upload",
-          value: uploadUrl,
+        urlDisplay,
+        urlButton,
+      ]
+    );
+
+    // --- API Key section ---
+    const apiKey = props.settingsStorage.getItem("dudu_api_key") || "";
+    const isEditingKey = props.settingsStorage.getItem("dudu_key_editing") === "true";
+
+    const keyDisplay = isEditingKey
+      ? TextInput({
+          label: "your-api-key",
+          value: apiKey,
           onChange: (val) => {
-            props.settingsStorage.setItem("dudu_upload_url", val);
+            props.settingsStorage.setItem("dudu_api_key", val);
           },
           subStyle: {
             fontSize: "14px",
@@ -39,6 +113,104 @@ AppSettingsPage({
             border: "1px solid #444444",
             borderRadius: "8px",
             padding: "8px 12px",
+          },
+        })
+      : Text(
+          {
+            paragraph: true,
+            style: {
+              fontSize: "14px",
+              color: "#ffffff",
+              background: "#222222",
+              border: "1px solid #444444",
+              borderRadius: "8px",
+              padding: "8px 12px",
+              wordBreak: "break-all",
+            },
+          },
+          apiKey || "(not set)"
+        );
+
+    const keyButton = isEditingKey
+      ? Button({
+          label: "Save",
+          style: {
+            fontSize: "13px",
+            borderRadius: "6px",
+            background: "#4caf50",
+            color: "white",
+            padding: "6px 14px",
+            marginTop: "8px",
+          },
+          click_func: () => {
+            props.settingsStorage.setItem("dudu_key_editing", "false");
+          },
+        })
+      : Button({
+          label: "Edit",
+          style: {
+            fontSize: "13px",
+            borderRadius: "6px",
+            background: "#2196f3",
+            color: "white",
+            padding: "6px 14px",
+            marginTop: "8px",
+          },
+          click_func: () => {
+            props.settingsStorage.setItem("dudu_key_editing", "true");
+          },
+        });
+
+    const keyConfig = Section(
+      {
+        style: {
+          marginBottom: "16px",
+          borderBottom: "1px solid #333333",
+          paddingBottom: "16px",
+        },
+      },
+      [
+        Text(
+          {
+            bold: true,
+            paragraph: true,
+            style: { color: "#cccccc", fontSize: "13px", marginBottom: "8px" },
+          },
+          "API Key"
+        ),
+        keyDisplay,
+        keyButton,
+      ]
+    );
+
+    // --- Duration slider section ---
+    const currentDuration = parseInt(props.settingsStorage.getItem("dudu_duration")) || 30;
+
+    const durationConfig = Section(
+      {
+        style: {
+          marginBottom: "16px",
+          borderBottom: "1px solid #333333",
+          paddingBottom: "16px",
+        },
+      },
+      [
+        Text(
+          {
+            bold: true,
+            paragraph: true,
+            style: { color: "#cccccc", fontSize: "13px", marginBottom: "8px" },
+          },
+          "Recording Duration: " + currentDuration + "s"
+        ),
+        Slider({
+          label: currentDuration + "s",
+          min: 5,
+          max: 60,
+          step: 5,
+          value: currentDuration,
+          onChange: (val) => {
+            props.settingsStorage.setItem("dudu_duration", String(val));
           },
         }),
       ]
@@ -62,6 +234,8 @@ AppSettingsPage({
             "DuDu Recordings"
           ),
           urlConfig,
+          keyConfig,
+          durationConfig,
           Text(
             {
               paragraph: true,
@@ -178,6 +352,8 @@ AppSettingsPage({
           "DuDu Recordings"
         ),
         urlConfig,
+        keyConfig,
+        durationConfig,
         Text(
           {
             paragraph: true,
