@@ -1,65 +1,59 @@
 import { createWidget, widget, align, prop } from "@zos/ui";
 import { push, back, replace } from "@zos/router";
-import { create, id, codec } from "@zos/media";
 import { getDeviceInfo } from "@zos/device";
-import { listAudioFiles, deleteAudioFile } from "./audioController.js";
+import { BasePage } from "@zeppos/zml/base-page";
+import {
+  listAudioFiles, deleteAudioFile, syncAllFiles, FOLDER_PATH,
+  playAudio, stopAudio, isAudioPlaying, destroyPlayer,
+} from "./audioController.js";
 
 const { width, height } = getDeviceInfo();
-const FOLDER_PATH = "data://dudus/";
 
 const ROW_HEIGHT = 60;
 const BTN_W = 50;
 const PADDING = 10;
 const START_Y = 60;
 
-let player = null;
-let isPlaying = false;
 let activePlayBtn = null;
+let statusWidget = null;
 
-function stopPlayer() {
-  if (player && isPlaying) {
-    try { player.stop(); } catch (e) {}
-    isPlaying = false;
-    if (activePlayBtn) {
-      activePlayBtn.setProperty(prop.TEXT, "P");
-      activePlayBtn = null;
-    }
+function stopPlayerUI() {
+  stopAudio();
+  if (activePlayBtn) {
+    activePlayBtn.setProperty(prop.TEXT, "P");
+    activePlayBtn = null;
   }
 }
 
 function playFile(filePath, playBtn) {
-  if (isPlaying) {
-    stopPlayer();
+  if (isAudioPlaying()) {
+    const wasPlaying = activePlayBtn;
+    stopPlayerUI();
     // If same button tapped again, just stop
-    if (activePlayBtn === playBtn) return;
+    if (wasPlaying === playBtn) return;
   }
 
-  player = create(id.PLAYER);
   activePlayBtn = playBtn;
 
-  player.addEventListener(player.event.PREPARE, function (result) {
-    if (result) {
-      player.start();
-      isPlaying = true;
+  playAudio(filePath, {
+    onStart() {
       playBtn.setProperty(prop.TEXT, "S");
-    } else {
-      console.log("[audiolist] Player prepare failed");
-    }
+    },
+    onComplete() {
+      playBtn.setProperty(prop.TEXT, "P");
+      activePlayBtn = null;
+    },
+    onError(msg) {
+      console.log("[audiolist] Play error:", msg);
+      activePlayBtn = null;
+    },
   });
-
-  player.addEventListener(player.event.COMPLETE, function () {
-    isPlaying = false;
-    playBtn.setProperty(prop.TEXT, "P");
-    activePlayBtn = null;
-  });
-
-  player.setSource(player.source.FILE, { file: filePath });
-  player.prepare();
 }
 
-Page({
+Page(BasePage({
   build() {
     const files = listAudioFiles();
+    const pageRequest = this.request.bind(this);
 
     // Title
     createWidget(widget.TEXT, {
@@ -73,13 +67,31 @@ Page({
       align_h: align.CENTER_H,
     });
 
-    // Back button
-    const backBtnW = Math.floor(width * 0.3);
+    // Status text for upload feedback
+    statusWidget = createWidget(widget.TEXT, {
+      x: 0,
+      y: height - 100,
+      w: width,
+      h: 30,
+      text: "",
+      text_size: 16,
+      color: 0xaaaaaa,
+      align_h: align.CENTER_H,
+    });
+
+    // Bottom buttons: BACK and SYNC side by side
+    const bottomBtnW = Math.floor(width * 0.35);
+    const bottomBtnH = 40;
+    const bottomBtnY = height - 60;
+    const bottomGap = Math.floor(width * 0.04);
+    const bottomLeftX = Math.floor(width / 2 - bottomBtnW - bottomGap / 2);
+    const bottomRightX = Math.floor(width / 2 + bottomGap / 2);
+
     createWidget(widget.BUTTON, {
-      x: Math.floor((width - backBtnW) / 2),
-      y: height - 60,
-      w: backBtnW,
-      h: 40,
+      x: bottomLeftX,
+      y: bottomBtnY,
+      w: bottomBtnW,
+      h: bottomBtnH,
       radius: 8,
       normal_color: 0x444444,
       press_color: 0x666666,
@@ -87,8 +99,28 @@ Page({
       text_size: 18,
       color: 0xffffff,
       click_func: () => {
-        stopPlayer();
+        stopPlayerUI();
         back();
+      },
+    });
+
+    createWidget(widget.BUTTON, {
+      x: bottomRightX,
+      y: bottomBtnY,
+      w: bottomBtnW,
+      h: bottomBtnH,
+      radius: 8,
+      normal_color: 0x4caf50,
+      press_color: 0x81c784,
+      text: "SYNC",
+      text_size: 18,
+      color: 0xffffff,
+      click_func: () => {
+        syncAllFiles(pageRequest, (message) => {
+          if (statusWidget) {
+            statusWidget.setProperty(prop.TEXT, message);
+          }
+        });
       },
     });
 
@@ -155,7 +187,7 @@ Page({
         text_size: 20,
         color: 0xffffff,
         click_func: () => {
-          stopPlayer();
+          stopPlayerUI();
           deleteAudioFile(fileName);
           replace({ url: "page/gt/home/audiolist.page" });
         },
@@ -164,7 +196,8 @@ Page({
   },
 
   onDestroy() {
-    stopPlayer();
-    player = null;
+    destroyPlayer();
+    activePlayBtn = null;
+    statusWidget = null;
   },
-});
+}));

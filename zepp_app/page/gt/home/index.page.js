@@ -1,238 +1,21 @@
 import { createWidget, widget, align, prop } from "@zos/ui";
-import { create, id, codec } from "@zos/media";
 import { push } from "@zos/router";
-import { setTimeout, clearTimeout, setInterval, clearInterval } from "@zos/timer";
 import { getDeviceInfo } from "@zos/device";
-import { mkdirSync, rmSync, readdirSync, readFileSync } from "@zos/fs";
-import TransferFile from "@zos/ble/TransferFile";
 import { BasePage } from "@zeppos/zml/base-page";
-
-const RECORD_DURATION = 30;
-const FOLDER_PATH = "data://dudus/";
+import {
+  RECORD_DURATION, syncSingleFile,
+  playAudio, stopAudio, isAudioPlaying, destroyPlayer,
+  startRecording, stopRecording, cancelRecording,
+  isCurrentlyRecording, getCurrentFilename, destroyRecorder,
+} from "./audioController.js";
 
 const { width, height } = getDeviceInfo();
-
-let recorder = null;
-let player = null;
-let isPlaying = false;
-let stopTimeout = null;
-let countdownInterval = null;
-let countdownValue = RECORD_DURATION;
-let isRecording = false;
-let currentFilename = null;
 
 let countdownWidget = null;
 let buttonWidget = null;
 let playButtonWidget = null;
 let listButtonWidget = null;
 let cancelButtonWidget = null;
-let syncButtonWidget = null;
-
-function ensureFolder() {
-  try {
-    mkdirSync({ path: "dudus" });
-  } catch (e) {
-    // folder may already exist
-  }
-}
-
-let transferFileInstance = null;
-
-function getOutbox() {
-  if (!transferFileInstance) {
-    transferFileInstance = new TransferFile();
-  }
-  return transferFileInstance.getOutbox();
-}
-
-function transferAllFiles() {
-  let files;
-  try {
-    files = readdirSync({ path: "dudus" });
-    console.log("[transfer] readdirSync result:", JSON.stringify(files));
-  } catch (e) {
-    console.log("[transfer] readdirSync error:", e);
-    if (countdownWidget) {
-      countdownWidget.setProperty(prop.TEXT, "Read error");
-    }
-    return;
-  }
-
-  if (!files || !Array.isArray(files) || files.length === 0) {
-    console.log("[transfer] No files to transfer");
-    if (countdownWidget) {
-      countdownWidget.setProperty(prop.TEXT, "No files");
-    }
-    return;
-  }
-
-  let outbox;
-  try {
-    outbox = getOutbox();
-    console.log("[transfer] Outbox ready");
-  } catch (e) {
-    console.log("[transfer] Outbox error:", e);
-    if (countdownWidget) {
-      countdownWidget.setProperty(prop.TEXT, "BLE error");
-    }
-    return;
-  }
-
-  let pending = files.length;
-  console.log("[transfer] Transferring", pending, "file(s)");
-
-  files.forEach((fileName) => {
-    const filePath = "data://dudus/" + fileName;
-    console.log("[transfer] Queuing:", filePath);
-
-    try {
-      const fileObject = outbox.enqueueFile(filePath, { fileName: fileName });
-      console.log("[transfer] Enqueued OK, readyState:", fileObject.readyState);
-
-      fileObject.on("progress", (event) => {
-        console.log("[transfer] Progress:", fileName, event.data.loadedSize, "/", event.data.fileSize);
-      });
-
-      fileObject.on("change", (event) => {
-        console.log("[transfer] State change:", fileName, event.data.readyState);
-        if (event.data.readyState === "transferring") {
-          if (countdownWidget) {
-            countdownWidget.setProperty(prop.TEXT, "Sending...");
-          }
-        } else if (event.data.readyState === "transferred") {
-          console.log("[transfer] Sent:", fileName);
-          pending--
-          if (pending <= 0 && countdownWidget) {
-            countdownWidget.setProperty(prop.TEXT, "Synced!");
-          }
-        } else if (event.data.readyState === "error") {
-          console.log("[transfer] Transfer error:", fileName);
-          pending--;
-          if (pending <= 0 && countdownWidget) {
-            countdownWidget.setProperty(prop.TEXT, "Sync error");
-          }
-        }
-      });
-    } catch (e) {
-      console.log("[transfer] enqueueFile error:", fileName, e);
-      pending--;
-      if (pending <= 0 && countdownWidget) {
-        countdownWidget.setProperty(prop.TEXT, "Queue error");
-      }
-    }
-  });
-}
-
-const B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-
-function arrayBufferToBase64(buffer) {
-  const bytes = new Uint8Array(buffer);
-  let result = "";
-  const len = bytes.length;
-  for (let i = 0; i < len; i += 3) {
-    const a = bytes[i];
-    const b = i + 1 < len ? bytes[i + 1] : 0;
-    const c = i + 2 < len ? bytes[i + 2] : 0;
-    result += B64[a >> 2];
-    result += B64[((a & 3) << 4) | (b >> 4)];
-    result += i + 1 < len ? B64[((b & 15) << 2) | (c >> 6)] : "=";
-    result += i + 2 < len ? B64[c & 63] : "=";
-  }
-  return result;
-}
-
-let pageRequest = null;
-
-function uploadAllFiles() {
-  let files;
-  try {
-    files = readdirSync({ path: "dudus" });
-  } catch (e) {
-    console.log("[upload] readdirSync error:", e);
-    if (countdownWidget) {
-      countdownWidget.setProperty(prop.TEXT, "Read error");
-    }
-    return;
-  }
-
-  if (!files || !Array.isArray(files) || files.length === 0) {
-    if (countdownWidget) {
-      countdownWidget.setProperty(prop.TEXT, "No files");
-    }
-    return;
-  }
-
-  if (!pageRequest) {
-    console.log("[upload] messaging not ready");
-    if (countdownWidget) {
-      countdownWidget.setProperty(prop.TEXT, "Not ready");
-    }
-    return;
-  }
-
-  let pending = files.length;
-  console.log("[upload] Uploading", pending, "file(s)");
-
-  if (countdownWidget) {
-    countdownWidget.setProperty(prop.TEXT, "Uploading...");
-  }
-
-  files.forEach((fileName) => {
-    try {
-      const data = readFileSync({ path: "dudus/" + fileName });
-      if (!data) {
-        console.log("[upload] readFileSync returned null:", fileName);
-        pending--;
-        return;
-      }
-      console.log("[upload] Read", fileName, "size:", data.byteLength);
-
-      const base64 = arrayBufferToBase64(data);
-      console.log("[upload] Base64 length:", base64.length);
-
-      pageRequest({
-        method: "http.request",
-        params: {
-          url: "http://192.168.100.123:9000/upload",
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ fileName: fileName, data: base64 }),
-        },
-      })
-        .then(function (res) {
-          console.log("[upload] Success:", fileName);
-          pending--;
-          if (pending <= 0 && countdownWidget) {
-            countdownWidget.setProperty(prop.TEXT, "Uploaded!");
-          }
-        })
-        .catch(function (e) {
-          console.log("[upload] Error:", fileName, e);
-          pending--;
-          if (pending <= 0 && countdownWidget) {
-            countdownWidget.setProperty(prop.TEXT, "Upload error");
-          }
-        });
-    } catch (e) {
-      console.log("[upload] File error:", fileName, e);
-      pending--;
-    }
-  });
-}
-
-function generateFilename() {
-  const now = new Date();
-  const pad = (n) => n.toString().padStart(2, "0");
-  const year = now.getFullYear();
-  const month = pad(now.getMonth() + 1);
-  const day = pad(now.getDate());
-  const hours = pad(now.getHours());
-  const minutes = pad(now.getMinutes());
-  const seconds = pad(now.getSeconds());
-  return FOLDER_PATH + `record_${year}${month}${day}_${hours}${minutes}${seconds}.opus`;
-}
 
 function showIdleButtons(showPlay) {
   if (playButtonWidget) {
@@ -240,9 +23,6 @@ function showIdleButtons(showPlay) {
   }
   if (listButtonWidget) {
     listButtonWidget.setProperty(prop.VISIBLE, true);
-  }
-  if (syncButtonWidget) {
-    syncButtonWidget.setProperty(prop.VISIBLE, true);
   }
   if (cancelButtonWidget) {
     cancelButtonWidget.setProperty(prop.VISIBLE, false);
@@ -256,185 +36,95 @@ function showRecordingButtons() {
   if (listButtonWidget) {
     listButtonWidget.setProperty(prop.VISIBLE, false);
   }
-  if (syncButtonWidget) {
-    syncButtonWidget.setProperty(prop.VISIBLE, false);
-  }
   if (cancelButtonWidget) {
     cancelButtonWidget.setProperty(prop.VISIBLE, true);
   }
 }
 
-function stopPlayer() {
-  if (player && isPlaying) {
-    try {
-      player.stop();
-    } catch (e) {}
-    isPlaying = false;
-    if (playButtonWidget) {
-      playButtonWidget.setProperty(prop.TEXT, "PLAY");
-    }
-  }
-}
+let pageRequest = null;
 
-function togglePlayback() {
-  if (!currentFilename) return;
-
-  if (isPlaying) {
-    stopPlayer();
-    return;
-  }
-
-  // Create a fresh player each time
-  player = create(id.PLAYER);
-
-  player.addEventListener(player.event.PREPARE, function (result) {
-    if (result) {
-      console.log("Player ready, starting playback");
-      player.start();
-      isPlaying = true;
-      if (playButtonWidget) {
-        playButtonWidget.setProperty(prop.TEXT, "STOP");
-      }
-    } else {
-      console.log("Player prepare failed");
-      if (countdownWidget) {
-        countdownWidget.setProperty(prop.TEXT, "Play error");
-      }
-    }
-  });
-
-  player.addEventListener(player.event.COMPLETE, function () {
-    console.log("Playback complete");
-    isPlaying = false;
-    if (playButtonWidget) {
-      playButtonWidget.setProperty(prop.TEXT, "PLAY");
-    }
-    if (countdownWidget) {
-      countdownWidget.setProperty(prop.TEXT, "Done!");
-    }
-  });
-
-  player.setSource(player.source.FILE, { file: currentFilename });
-  player.prepare();
-
-  if (countdownWidget) {
-    countdownWidget.setProperty(prop.TEXT, "Playing...");
-  }
-}
-
-function cancelRecording() {
-  if (!isRecording) return;
-  isRecording = false;
-
-  if (stopTimeout) {
-    clearTimeout(stopTimeout);
-    stopTimeout = null;
-  }
-  if (countdownInterval) {
-    clearInterval(countdownInterval);
-    countdownInterval = null;
-  }
-
-  try {
-    recorder.stop();
-  } catch (e) {}
-
-  // Delete the discarded file
-  if (currentFilename) {
-    try {
-      // currentFilename is "data://dudus/file.opus", rmSync needs relative path "dudus/file.opus"
-      const relativePath = currentFilename.replace("data://", "");
-      rmSync({ path: relativePath });
-      console.log("Cancelled recording deleted:", relativePath);
-    } catch (e) {
-      console.log("Error deleting cancelled file:", e);
-    }
-  }
-
-  currentFilename = null;
-
-  if (countdownWidget) {
-    countdownWidget.setProperty(prop.TEXT, "Ready");
-  }
-  if (buttonWidget) {
-    buttonWidget.setProperty(prop.TEXT, "NEW");
-  }
-
-  showIdleButtons(false);
-}
-
-function startNewRecording() {
-  stopPlayer();
+function doStartRecording() {
   showRecordingButtons();
 
-  countdownValue = RECORD_DURATION;
-  ensureFolder();
-
-  currentFilename = generateFilename();
-  console.log("Saving to file:", currentFilename);
-
-  // Reuse existing recorder or create a new one
-  if (!recorder) {
-    recorder = create(id.RECORDER);
-  }
-  recorder.setFormat(codec.OPUS, {
-    target_file: currentFilename,
-  });
-
   if (countdownWidget) {
-    countdownWidget.setProperty(prop.TEXT, countdownValue.toString());
+    countdownWidget.setProperty(prop.TEXT, RECORD_DURATION.toString());
   }
   if (buttonWidget) {
     buttonWidget.setProperty(prop.TEXT, "STOP");
   }
 
-  recorder.start();
-  isRecording = true;
-  console.log("Recording started ->", currentFilename);
+  startRecording({
+    onCountdown(value) {
+      if (value >= 0 && countdownWidget) {
+        countdownWidget.setProperty(prop.TEXT, value.toString());
+      }
+    },
+    onStopped(filename) {
+      if (buttonWidget) {
+        buttonWidget.setProperty(prop.TEXT, "NEW");
+      }
+      showIdleButtons(true);
 
-  countdownInterval = setInterval(() => {
-    countdownValue--;
-    if (countdownValue >= 0 && countdownWidget) {
-      countdownWidget.setProperty(prop.TEXT, countdownValue.toString());
-    }
-    if (countdownValue <= 0) {
-      stopRecording();
-    }
-  }, 1000);
-
-  stopTimeout = setTimeout(() => {
-    stopRecording();
-  }, RECORD_DURATION * 1000);
+      // Auto-sync the recorded file
+      const justFileName = filename.replace("data://dudus/", "");
+      syncSingleFile(justFileName, pageRequest, (msg) => {
+        if (countdownWidget) {
+          countdownWidget.setProperty(prop.TEXT, msg);
+        }
+      });
+    },
+  });
 }
 
-function stopRecording() {
-  if (!isRecording) return;
-  isRecording = false;
+function doTogglePlayback() {
+  const filename = getCurrentFilename();
+  if (!filename) return;
 
-  if (stopTimeout) {
-    clearTimeout(stopTimeout);
-    stopTimeout = null;
-  }
-  if (countdownInterval) {
-    clearInterval(countdownInterval);
-    countdownInterval = null;
-  }
-
-  try {
-    recorder.stop();
-    console.log("Recording stopped and saved.");
-  } catch (err) {
-    console.log("Error stopping recorder:", err);
+  if (isAudioPlaying()) {
+    stopAudio();
+    if (playButtonWidget) {
+      playButtonWidget.setProperty(prop.TEXT, "PLAY");
+    }
+    return;
   }
 
-  if (countdownWidget) {
-    countdownWidget.setProperty(prop.TEXT, "Saved!");
-  }
-  if (buttonWidget) {
-    buttonWidget.setProperty(prop.TEXT, "NEW");
-  }
+  playAudio(filename, {
+    onStart() {
+      if (playButtonWidget) {
+        playButtonWidget.setProperty(prop.TEXT, "STOP");
+      }
+      if (countdownWidget) {
+        countdownWidget.setProperty(prop.TEXT, "Playing...");
+      }
+    },
+    onComplete() {
+      if (playButtonWidget) {
+        playButtonWidget.setProperty(prop.TEXT, "PLAY");
+      }
+      if (countdownWidget) {
+        countdownWidget.setProperty(prop.TEXT, "Done!");
+      }
+    },
+    onError(msg) {
+      if (countdownWidget) {
+        countdownWidget.setProperty(prop.TEXT, msg);
+      }
+    },
+  });
+}
 
-  showIdleButtons(true);
+function doCancelRecording() {
+  cancelRecording({
+    onCancelled() {
+      if (countdownWidget) {
+        countdownWidget.setProperty(prop.TEXT, "Ready");
+      }
+      if (buttonWidget) {
+        buttonWidget.setProperty(prop.TEXT, "NEW");
+      }
+      showIdleButtons(false);
+    },
+  });
 }
 
 const btnSize = Math.floor(width * 0.3);
@@ -474,10 +164,11 @@ Page(BasePage({
       text_size: 22,
       color: 0xffffff,
       click_func: () => {
-        if (isRecording) {
+        if (isCurrentlyRecording()) {
           stopRecording();
         } else {
-          startNewRecording();
+          stopAudio();
+          doStartRecording();
         }
       },
     });
@@ -495,7 +186,7 @@ Page(BasePage({
       text_size: 22,
       color: 0xffffff,
       click_func: () => {
-        togglePlayback();
+        doTogglePlayback();
       },
     });
     // Cancel button (visible only during recording, replaces PLAY position)
@@ -511,23 +202,20 @@ Page(BasePage({
       text_size: 16,
       color: 0xffffff,
       click_func: () => {
-        cancelRecording();
+        doCancelRecording();
       },
     });
     cancelButtonWidget.setProperty(prop.VISIBLE, false);
 
     playButtonWidget.setProperty(prop.VISIBLE, false);
 
-    // Bottom buttons: LIST and SYNC side by side
+    // LIST button centered at bottom
     const bottomBtnW = Math.floor(width * 0.35);
     const bottomBtnH = 40;
     const bottomBtnY = btnY + btnSize + Math.floor(btnSize * 0.2);
-    const bottomGap = Math.floor(width * 0.04);
-    const bottomLeftX = Math.floor(width / 2 - bottomBtnW - bottomGap / 2);
-    const bottomRightX = Math.floor(width / 2 + bottomGap / 2);
 
     listButtonWidget = createWidget(widget.BUTTON, {
-      x: bottomLeftX,
+      x: Math.floor((width - bottomBtnW) / 2),
       y: bottomBtnY,
       w: bottomBtnW,
       h: bottomBtnH,
@@ -538,44 +226,24 @@ Page(BasePage({
       text_size: 18,
       color: 0xffffff,
       click_func: () => {
-        stopPlayer();
+        stopAudio();
         push({ url: "page/gt/home/audiolist.page" });
       },
     });
     listButtonWidget.setProperty(prop.VISIBLE, false);
 
-    syncButtonWidget = createWidget(widget.BUTTON, {
-      x: bottomRightX,
-      y: bottomBtnY,
-      w: bottomBtnW,
-      h: bottomBtnH,
-      radius: 8,
-      normal_color: 0x4caf50,
-      press_color: 0x81c784,
-      text: "SYNC",
-      text_size: 18,
-      color: 0xffffff,
-      click_func: () => {
-        uploadAllFiles();
-      },
-    });
-    syncButtonWidget.setProperty(prop.VISIBLE, false);
-
     // Start first recording immediately
-    startNewRecording();
+    doStartRecording();
   },
 
   onDestroy() {
-    stopRecording();
-    stopPlayer();
-    recorder = null;
-    player = null;
+    destroyRecorder();
+    destroyPlayer();
+    pageRequest = null;
     countdownWidget = null;
     buttonWidget = null;
     playButtonWidget = null;
     listButtonWidget = null;
-    syncButtonWidget = null;
     cancelButtonWidget = null;
-    pageRequest = null;
   },
 }));
