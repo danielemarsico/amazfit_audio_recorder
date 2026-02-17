@@ -91,71 +91,6 @@ export function arrayBufferToBase64(buffer) {
   return result;
 }
 
-export function uploadAllFiles(files,requestFn, statusCallback, doneCallback) {
-
-
-  if (!requestFn) {
-    console.log("[upload] messaging not ready");
-    statusCallback("Not ready");
-    if (doneCallback) doneCallback(false);
-    return;
-  }
-
-  let pending = files.length;
-  let hadError = false;
-  console.log("[upload] Uploading", pending, "file(s)");
-  statusCallback("Uploading...");
-
-  files.forEach((fileName) => {
-    try {
-      const data = readFileSync({ path: AUDIO_FOLDER + "/" + fileName });
-      if (!data) {
-        console.log("[upload] readFileSync returned null:", fileName);
-        hadError = true;
-        pending--;
-        if (pending <= 0 && doneCallback) doneCallback(!hadError);
-        return;
-      }
-      console.log("[upload] Read", fileName, "size:", data.byteLength);
-
-      const base64 = arrayBufferToBase64(data);
-      console.log("[upload] Base64 length:", base64.length);
-
-      requestFn({
-        method: "http.request",
-        params: {
-          url: _uploadUrl,
-          method: "POST",
-          headers: getUploadHeaders(),
-          body: makeUploadBody(fileName, base64),
-        },
-      })
-        .then(function (res) {
-          console.log("[upload] Success:", fileName);
-          pending--;
-          if (pending <= 0) {
-            statusCallback("Uploaded!");
-            if (doneCallback) doneCallback(!hadError);
-          }
-        })
-        .catch(function (e) {
-          console.log("[upload] Error:", fileName, e);
-          hadError = true;
-          pending--;
-          if (pending <= 0) {
-            statusCallback("Upload error");
-            if (doneCallback) doneCallback(false);
-          }
-        });
-    } catch (e) {
-      console.log("[upload] File error:", fileName, e);
-      hadError = true;
-      pending--;
-      if (pending <= 0 && doneCallback) doneCallback(false);
-    }
-  });
-}
-
 let transferFileInstance = null;
 
 function getOutbox() {
@@ -165,82 +100,6 @@ function getOutbox() {
   return transferFileInstance.getOutbox();
 }
 
-export function transferAllFiles(files,statusCallback, doneCallback) {
-
-  let outbox;
-  try {
-    outbox = getOutbox();
-    console.log("[transfer] Outbox ready");
-  } catch (e) {
-    console.log("[transfer] Outbox error:", e);
-    statusCallback("BLE error");
-    if (doneCallback) doneCallback(false);
-    return;
-  }
-
-  let pending = files.length;
-  let hadError = false;
-  let finished = false;
-  console.log("[transfer] Transferring", pending, "file(s)");
-
-  const transferTimeout = setTimeout(() => {
-    if (!finished) {
-      console.log("[transfer] Timeout, pending:", pending);
-      finished = true;
-      statusCallback("Transfer timeout");
-      if (doneCallback) doneCallback(false);
-    }
-  }, 15000);
-
-  function finishIfDone() {
-    if (finished || pending > 0) return;
-    finished = true;
-    clearTimeout(transferTimeout);
-    if (hadError) {
-      statusCallback("Sync error");
-      if (doneCallback) doneCallback(false);
-    } else {
-      statusCallback("Synced!");
-      if (doneCallback) doneCallback(true);
-    }
-  }
-
-  files.forEach((fileName) => {
-    const filePath = FOLDER_PATH + fileName;
-    console.log("[transfer] Queuing:", filePath);
-
-    try {
-      const fileObject = outbox.enqueueFile(filePath, { fileName: fileName });
-      console.log("[transfer] Enqueued OK, readyState:", fileObject.readyState);
-
-      fileObject.on("progress", (event) => {
-        console.log("[transfer] Progress:", fileName, event.data.loadedSize, "/", event.data.fileSize);
-      });
-
-      fileObject.on("change", (event) => {
-        console.log("[transfer] State change:", fileName, event.data.readyState);
-        if (event.data.readyState === "transferring") {
-          statusCallback("Sending...");
-        } else if (event.data.readyState === "transferred") {
-          console.log("[transfer] Sent:", fileName);
-          pending--;
-          finishIfDone();
-        } else if (event.data.readyState === "error") {
-          console.log("[transfer] Transfer error:", fileName);
-          hadError = true;
-          pending--;
-          finishIfDone();
-        }
-      });
-    } catch (e) {
-      console.log("[transfer] enqueueFile error:", fileName, e);
-      hadError = true;
-      pending--;
-      finishIfDone();
-    }
-  });
-}
-
 export function syncAllFiles(requestFn, statusCallback) {
   const files = listAudioFiles();
   if (files.length === 0) {
@@ -248,136 +107,115 @@ export function syncAllFiles(requestFn, statusCallback) {
     return;
   }
 
-  let uploadDone = false;
-  let transferDone = false;
-  let uploadOk = false;
-  let transferOk = false;
+  let index = 0;
+  let hadError = false;
 
-  function checkBothDone() {
-    if (!uploadDone || !transferDone) return;
-    if (uploadOk && transferOk) {
-      statusCallback("Synced!");
-    } else {
-      statusCallback("SYNC ERROR!");
+  function syncNext() {
+    if (index >= files.length) {
+      statusCallback(hadError ? "SYNC ERROR!" : "Synced!");
+      return;
     }
+    const fileName = files[index];
+    statusCallback((index + 1) + "/" + files.length + " " + fileName);
+    syncSingleFile(fileName, requestFn, (msg) => {
+      statusCallback((index + 1) + "/" + files.length + " " + msg);
+    }, (msg) => {
+      console.log("[syncAll]", fileName, "->", msg);
+      if (msg.indexOf("ERROR") !== -1) hadError = true;
+      index++;
+      syncNext();
+    });
   }
 
-  statusCallback("Syncing...");
-
-  uploadAllFiles(files,requestFn, (msg) => {
-    console.log("[sync] upload status:", msg);
-  }, (ok) => {
-    uploadDone = true;
-    uploadOk = ok;
-    checkBothDone();
-  });
-
-  transferAllFiles(files,(msg) => {
-    console.log("[sync] transfer status:", msg);
-  }, (ok) => {
-    transferDone = true;
-    transferOk = ok;
-    checkBothDone();
-  });
+  syncNext();
 }
 
-export function syncSingleFile(fileName, requestFn, statusCallback) {
-  let uploadDone = false;
-  let transferDone = false;
-  let uploadOk = false;
-  let transferOk = false;
+export function syncSingleFile(fileName, requestFn, statusCallback, doneCallback) {
+  statusCallback("Uploading...");
 
-  function checkBothDone() {
-    if (!uploadDone || !transferDone) return;
-    if (uploadOk && transferOk) {
-      statusCallback("Synced!");
-    } else {
-      statusCallback("SYNC ERROR!");
+  function finish(msg) {
+    statusCallback(msg);
+    if (doneCallback) doneCallback(msg);
+  }
+
+  function doBleTransfer(uploadOk) {
+    statusCallback("Transferring...");
+    let transferTimeout = null;
+    let transferDone = false;
+
+    try {
+      const outbox = getOutbox();
+      const filePath = FOLDER_PATH + fileName;
+      const fileObject = outbox.enqueueFile(filePath, { fileName: fileName });
+      console.log("[sync] Transfer enqueued:", fileName);
+
+      transferTimeout = setTimeout(() => {
+        if (!transferDone) {
+          console.log("[sync] Transfer timeout:", fileName);
+          transferDone = true;
+          finish(uploadOk ? "Upload OK, transfer timeout" : "SYNC ERROR!");
+        }
+      }, 15000);
+
+      fileObject.on("change", (event) => {
+        if (transferDone) return;
+        if (event.data.readyState === "transferred") {
+          console.log("[sync] Transfer OK:", fileName);
+          if (transferTimeout) clearTimeout(transferTimeout);
+          transferDone = true;
+          finish(uploadOk ? "Synced!" : "Transfer OK, upload failed");
+        } else if (event.data.readyState === "error") {
+          console.log("[sync] Transfer error:", fileName);
+          if (transferTimeout) clearTimeout(transferTimeout);
+          transferDone = true;
+          finish("SYNC ERROR!");
+        }
+      });
+    } catch (e) {
+      console.log("[sync] Transfer enqueue error:", fileName, e);
+      if (transferTimeout) clearTimeout(transferTimeout);
+      finish(uploadOk ? "Upload OK, transfer error" : "SYNC ERROR!");
     }
   }
 
-  statusCallback("Syncing...");
-
-  // HTTP upload
+  // HTTP upload first, then BLE transfer
   if (!requestFn) {
     console.log("[sync] messaging not ready");
-    uploadDone = true;
-    uploadOk = false;
-    checkBothDone();
-  } else {
-    try {
-      const data = readFileSync({ path: AUDIO_FOLDER + "/" + fileName });
-      if (!data) {
-        console.log("[sync] readFileSync returned null:", fileName);
-        uploadDone = true;
-        checkBothDone();
-      } else {
-        console.log("[sync] Read", fileName, "size:", data.byteLength);
-        const base64 = arrayBufferToBase64(data);
-
-        requestFn({
-          method: "http.request",
-          params: {
-            url: _uploadUrl,
-            method: "POST",
-            headers: getUploadHeaders(),
-            body: makeUploadBody(fileName, base64),
-          },
-        })
-          .then(function (res) {
-            console.log("[sync] Upload OK:", fileName, JSON.stringify(res));
-            uploadDone = true;
-            uploadOk = true;
-            checkBothDone();
-          })
-          .catch(function (e) {
-            console.log("[sync] Upload error:", fileName, JSON.stringify(e));
-            uploadDone = true;
-            checkBothDone();
-          });
-      }
-    } catch (e) {
-      console.log("[sync] File read error:", fileName, e);
-      uploadDone = true;
-      checkBothDone();
-    }
+    doBleTransfer(false);
+    return;
   }
 
-  // BLE transfer
-  let transferTimeout = null;
   try {
-    const outbox = getOutbox();
-    const filePath = FOLDER_PATH + fileName;
-    const fileObject = outbox.enqueueFile(filePath, { fileName: fileName });
-    console.log("[sync] Transfer enqueued:", fileName);
+    const data = readFileSync({ path: AUDIO_FOLDER + "/" + fileName });
+    if (!data) {
+      console.log("[sync] readFileSync returned null:", fileName);
+      doBleTransfer(false);
+      return;
+    }
 
-    transferTimeout = setTimeout(() => {
-      if (!transferDone) {
-        console.log("[sync] Transfer timeout:", fileName);
-        transferDone = true;
-        checkBothDone();
-      }
-    }, 15000);
+    console.log("[sync] Read", fileName, "size:", data.byteLength);
+    const base64 = arrayBufferToBase64(data);
 
-    fileObject.on("change", (event) => {
-      if (event.data.readyState === "transferred") {
-        console.log("[sync] Transfer OK:", fileName);
-        if (transferTimeout) clearTimeout(transferTimeout);
-        transferDone = true;
-        transferOk = true;
-        checkBothDone();
-      } else if (event.data.readyState === "error") {
-        console.log("[sync] Transfer error:", fileName);
-        if (transferTimeout) clearTimeout(transferTimeout);
-        transferDone = true;
-        checkBothDone();
-      }
-    });
+    requestFn({
+      method: "http.request",
+      params: {
+        url: _uploadUrl,
+        method: "POST",
+        headers: getUploadHeaders(),
+        body: makeUploadBody(fileName, base64),
+      },
+    })
+      .then(function (res) {
+        console.log("[sync] Upload OK:", fileName, JSON.stringify(res));
+        doBleTransfer(true);
+      })
+      .catch(function (e) {
+        console.log("[sync] Upload error:", fileName, JSON.stringify(e));
+        doBleTransfer(false);
+      });
   } catch (e) {
-    console.log("[sync] Transfer enqueue error:", fileName, e);
-    if (transferTimeout) clearTimeout(transferTimeout);
-    transferDone = true;
-    checkBothDone();
+    console.log("[sync] File read error:", fileName, e);
+    doBleTransfer(false);
   }
 }
 

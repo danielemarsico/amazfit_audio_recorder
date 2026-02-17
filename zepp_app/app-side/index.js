@@ -40,6 +40,10 @@ AppSideService(
       }
     },
 
+    onSettingsChange({ key, newValue, oldValue }) {
+      console.log("[side] Settings changed:", key, "->", newValue);
+    },
+
     onDestroy() {
       console.log("[side] DuDu side service destroyed");
     },
