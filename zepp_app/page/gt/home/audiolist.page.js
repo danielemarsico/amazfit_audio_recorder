@@ -125,6 +125,8 @@ Page(BasePage({
           if (statusWidget) {
             statusWidget.setProperty(prop.TEXT, message);
           }
+        }, () => {
+          replace({ url: "page/gt/home/audiolist.page" });
         });
       },
     });

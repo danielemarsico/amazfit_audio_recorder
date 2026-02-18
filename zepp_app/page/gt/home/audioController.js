@@ -105,10 +105,11 @@ function getOutbox() {
   return transferFileInstance.getOutbox();
 }
 
-export function syncAllFiles(requestFn, statusCallback) {
+export function syncAllFiles(requestFn, statusCallback, doneCallback) {
   const files = listAudioFiles();
   if (files.length === 0) {
     statusCallback("No files");
+    if (doneCallback) doneCallback();
     return;
   }
 
@@ -118,6 +119,7 @@ export function syncAllFiles(requestFn, statusCallback) {
   function syncNext() {
     if (index >= files.length) {
       statusCallback(hadError ? "SYNC ERROR!" : "Synced!");
+      if (doneCallback) doneCallback();
       return;
     }
     const fileName = files[index];
@@ -168,6 +170,10 @@ export function syncSingleFile(fileName, requestFn, statusCallback, doneCallback
           console.log("[sync] Transfer OK:", fileName);
           if (transferTimeout) clearTimeout(transferTimeout);
           transferDone = true;
+          if (uploadOk) {
+            console.log("[sync] Both upload and transfer succeeded, deleting:", fileName);
+            deleteAudioFile(fileName);
+          }
           finish(uploadOk ? "Synced!" : "Transfer OK, upload failed");
         } else if (event.data.readyState === "error") {
           console.log("[sync] Transfer error:", fileName);

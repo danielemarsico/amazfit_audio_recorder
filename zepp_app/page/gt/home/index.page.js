@@ -72,6 +72,11 @@ function doStartRecording() {
         if (countdownWidget) {
           countdownWidget.setProperty(prop.TEXT, msg);
         }
+      }, (msg) => {
+        // File was deleted after successful upload + transfer — hide play button
+        if (msg === "Synced!" && playButtonWidget) {
+          playButtonWidget.setProperty(prop.VISIBLE, false);
+        }
       });
     },
   });
