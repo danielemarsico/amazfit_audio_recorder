@@ -213,28 +213,14 @@ function base64ToUint8Array(b64) {
 }
 
 // ---------------------------------------------------------------------------
-// OpenAI Whisper transcription
+// Cloudflare Workers AI transcription
 // ---------------------------------------------------------------------------
 
-async function transcribeWithWhisper(oggBytes, fileName, apiKey) {
-  const blob = new Blob([oggBytes], { type: 'audio/ogg' });
-  const form = new FormData();
-  form.append('file', blob, fileName.replace(/\.opus$/i, '.ogg'));
-  form.append('model', 'whisper-1');
-
-  const res = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${apiKey}` },
-    body: form,
+async function transcribeWithCfAi(oggBytes, ai) {
+  const result = await ai.run('@cf/openai/whisper', {
+    audio: [...oggBytes],
   });
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Whisper API ${res.status}: ${text}`);
-  }
-
-  const json = await res.json();
-  return json.text;
+  return result.text;
 }
 
 // ---------------------------------------------------------------------------
@@ -294,13 +280,9 @@ export default {
     }
 
     // --- Transcribe ---
-    if (!env.OPENAI_API_KEY) {
-      return json500('OPENAI_API_KEY secret is not configured');
-    }
-
     let transcription;
     try {
-      transcription = await transcribeWithWhisper(oggBytes, fileName || 'audio.opus', env.OPENAI_API_KEY);
+      transcription = await transcribeWithCfAi(oggBytes, env.AI);
     } catch (e) {
       return json500('Transcription failed: ' + e.message);
     }
