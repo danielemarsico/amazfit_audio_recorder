@@ -170,10 +170,6 @@ export function syncSingleFile(fileName, requestFn, statusCallback, doneCallback
           console.log("[sync] Transfer OK:", fileName);
           if (transferTimeout) clearTimeout(transferTimeout);
           transferDone = true;
-          if (uploadOk) {
-            console.log("[sync] Both upload and transfer succeeded, deleting:", fileName);
-            deleteAudioFile(fileName);
-          }
           finish(uploadOk ? "Synced!" : "Transfer OK, upload failed");
         } else if (event.data.readyState === "error") {
           console.log("[sync] Transfer error:", fileName);
