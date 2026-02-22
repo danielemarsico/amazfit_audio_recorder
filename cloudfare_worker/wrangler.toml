@@ -1,0 +1,7 @@
+name = "dudu-transcription"
+main = "worker.js"
+compatibility_date = "2025-01-01"
+
+# Secrets — set these via CLI, never commit them:
+#   wrangler secret put OPENAI_API_KEY
+#   wrangler secret put API_KEY          (optional: protects the /upload endpoint)
