@@ -237,7 +237,7 @@ export default {
       });
     }
 
-    if (request.method !== 'POST' || url.pathname !== '/upload') {
+    if (request.method !== 'POST' || (url.pathname !== '/upload' && url.pathname !== '/debug-ogg')) {
       return new Response('Not Found', { status: 404 });
     }
 
@@ -273,10 +273,26 @@ export default {
 
     // --- Convert ZeppOS Opus → Ogg-Opus ---
     let oggBytes;
+    let frameCount;
     try {
+      const frames = parseZeppOsOpus(audioBytes);
+      frameCount = frames.length;
+      if (frameCount === 0) return json500('No opus frames found in ZeppOS container');
       oggBytes = convertZeppOsOpusToOgg(audioBytes);
     } catch (e) {
       return json500('Opus conversion failed: ' + e.message);
+    }
+
+    // --- Debug endpoint: return raw Ogg for manual inspection ---
+    if (url.pathname === '/debug-ogg') {
+      return new Response(oggBytes, {
+        headers: {
+          'Content-Type': 'audio/ogg',
+          'Content-Disposition': `attachment; filename="${(fileName || 'audio').replace(/\.opus$/i, '')}.ogg"`,
+          'X-Frame-Count': String(frameCount),
+          'X-Ogg-Size': String(oggBytes.length),
+        },
+      });
     }
 
     // --- Transcribe ---
