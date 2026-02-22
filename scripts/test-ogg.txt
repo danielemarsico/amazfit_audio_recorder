@@ -1,0 +1,1 @@
+curl -X POST https://dudu-transcription.marsicod.workers.dev/debug-ogg   -H "Content-Type: application/json"   -H "Authorization: Bearer TEST-API"   -d "{\"fileName\":\"test.opus\",\"data\":\"$(base64 -w0 record_20260222_092548.opus)\"}"   --output converted.ogg

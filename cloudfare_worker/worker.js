@@ -190,10 +190,10 @@ function base64ToUint8Array(b64) {
 // Cloudflare Workers AI transcription
 // ---------------------------------------------------------------------------
 
-async function transcribeWithCfAi(oggBytes, ai) {
-  const result = await ai.run('@cf/openai/whisper', {
-    audio: [...oggBytes],
-  });
+async function transcribeWithCfAi(oggBytes, ai, language) {
+  const input = { audio: [...oggBytes] };
+  if (language) input.language = language;
+  const result = await ai.run('@cf/openai/whisper', input);
   return result.text;
 }
 
@@ -234,7 +234,7 @@ export default {
       });
     }
 
-    const { fileName, data: base64Data } = body;
+    const { fileName, data: base64Data, language } = body;
     if (!base64Data) return json400('Missing data field');
 
     // --- Decode ---
@@ -272,7 +272,7 @@ export default {
     // --- Transcribe ---
     let transcription;
     try {
-      transcription = await transcribeWithCfAi(oggBytes, env.AI);
+      transcription = await transcribeWithCfAi(oggBytes, env.AI, language);
     } catch (e) {
       return json500('Transcription failed: ' + e.message);
     }
