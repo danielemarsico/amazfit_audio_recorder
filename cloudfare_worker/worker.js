@@ -136,6 +136,7 @@ function parseZeppOsOpus(data) {
 /**
  * Convert ZeppOS opus bytes to a standard Ogg-Opus Uint8Array in memory.
  * Audio parameters: 16 kHz, mono, 20 ms frames (320 samples/frame).
+ * Uses one Ogg page per Opus frame — simpler and always valid.
  */
 function convertZeppOsOpusToOgg(audioBytes) {
   const frames = parseZeppOsOpus(audioBytes);
@@ -156,41 +157,14 @@ function convertZeppOsOpusToOgg(audioBytes) {
   const tags = buildOpusTags();
   pages.push(buildOggPage(0x00, 0, SERIAL, pageSeq++, simpleSegTable(tags.length), tags));
 
-  // Audio pages: pack multiple frames per page (≤ 3000 bytes payload), matching Python logic
+  // One Ogg page per Opus frame — avoids multi-packet lacing complexity
   let granule = PRE_SKIP;
-  let pagePayload = [];  // raw bytes accumulated
-  let frameSizes = [];   // size of each opus packet in this page
-
   for (let i = 0; i < frames.length; i++) {
     const frame = frames[i];
     const isLast = i === frames.length - 1;
-
-    for (const b of frame) pagePayload.push(b);
-    frameSizes.push(frame.length);
     granule += SAMPLES_PER_FRAME;
-
-    if (pagePayload.length > 3000 || isLast) {
-      // Build segment table based on per-packet sizes (one packet per opus frame)
-      const segTable = [];
-      for (const size of frameSizes) {
-        let s = size;
-        while (s >= 255) { segTable.push(255); s -= 255; }
-        segTable.push(s);
-      }
-
-      const headerType = isLast ? 0x04 : 0x00; // EOS flag on last page
-      pages.push(buildOggPage(
-        headerType,
-        granule,
-        SERIAL,
-        pageSeq++,
-        new Uint8Array(segTable),
-        new Uint8Array(pagePayload),
-      ));
-
-      pagePayload = [];
-      frameSizes = [];
-    }
+    const headerType = isLast ? 0x04 : 0x00; // EOS on last page
+    pages.push(buildOggPage(headerType, granule, SERIAL, pageSeq++, simpleSegTable(frame.length), frame));
   }
 
   // Concatenate all pages into one buffer
