@@ -1,7 +1,6 @@
 import { readdirSync, rmSync, mkdirSync, readFileSync } from '@zos/fs';
 import { createRecorder, createPlayer, codec } from './recorderFacade.js';
-import { setTimeout, clearTimeout, setInterval, clearInterval } from '@zos/timer';
-import TransferFile from "@zos/ble/TransferFile";
+import { setInterval, clearInterval } from '@zos/timer';
 
 export const FOLDER_PATH = "data://dudus/";
 
@@ -94,14 +93,6 @@ function makeAudioPayload(fileName, audioBuffer) {
   return payload.buffer;
 }
 
-let transferFileInstance = null;
-
-function getOutbox() {
-  if (!transferFileInstance) {
-    transferFileInstance = new TransferFile();
-  }
-  return transferFileInstance.getOutbox();
-}
 
 export function syncAllFiles(requestFn, statusCallback, doneCallback) {
   const files = listAudioFiles();
@@ -143,50 +134,9 @@ export function syncSingleFile(fileName, requestFn, statusCallback, doneCallback
     if (doneCallback) doneCallback(msg);
   }
 
-  function doBleTransfer(uploadOk) {
-    statusCallback("Transferring...");
-    let transferTimeout = null;
-    let transferDone = false;
-
-    try {
-      const outbox = getOutbox();
-      const filePath = FOLDER_PATH + fileName;
-      const fileObject = outbox.enqueueFile(filePath, { fileName: fileName });
-      console.log("[sync] Transfer enqueued:", fileName);
-
-      transferTimeout = setTimeout(() => {
-        if (!transferDone) {
-          console.log("[sync] Transfer timeout:", fileName);
-          transferDone = true;
-          finish(uploadOk ? "Upload OK, transfer timeout" : "SYNC ERROR!");
-        }
-      }, 15000);
-
-      fileObject.on("change", (event) => {
-        if (transferDone) return;
-        if (event.data.readyState === "transferred") {
-          console.log("[sync] Transfer OK:", fileName);
-          if (transferTimeout) clearTimeout(transferTimeout);
-          transferDone = true;
-          finish(uploadOk ? "Synced!" : "Transfer OK, upload failed");
-        } else if (event.data.readyState === "error") {
-          console.log("[sync] Transfer error:", fileName);
-          if (transferTimeout) clearTimeout(transferTimeout);
-          transferDone = true;
-          finish("SYNC ERROR!");
-        }
-      });
-    } catch (e) {
-      console.log("[sync] Transfer enqueue error:", fileName, e);
-      if (transferTimeout) clearTimeout(transferTimeout);
-      finish(uploadOk ? "Upload OK, transfer error" : "SYNC ERROR!");
-    }
-  }
-
-  // HTTP upload first, then BLE transfer
   if (!requestFn) {
     console.log("[sync] messaging not ready");
-    doBleTransfer(false);
+    finish("SYNC ERROR!");
     return;
   }
 
@@ -194,7 +144,7 @@ export function syncSingleFile(fileName, requestFn, statusCallback, doneCallback
     const data = readFileSync({ path: AUDIO_FOLDER + "/" + fileName });
     if (!data) {
       console.log("[sync] readFileSync returned null:", fileName);
-      doBleTransfer(false);
+      finish("SYNC ERROR!");
       return;
     }
 
@@ -204,15 +154,15 @@ export function syncSingleFile(fileName, requestFn, statusCallback, doneCallback
     requestFn(payload)
       .then(function (res) {
         console.log("[sync] Upload OK:", fileName, JSON.stringify(res));
-        doBleTransfer(true);
+        finish("Synced!");
       })
       .catch(function (e) {
         console.log("[sync] Upload error:", fileName, JSON.stringify(e));
-        doBleTransfer(false);
+        finish("SYNC ERROR!");
       });
   } catch (e) {
     console.log("[sync] File read error:", fileName, e);
-    doBleTransfer(false);
+    finish("SYNC ERROR!");
   }
 }
 

@@ -43,6 +43,15 @@ AppSideService(
           .then((r) => {
             if (r.status >= 200 && r.status < 300) {
               console.log("[side] upload ok, status:", r.status);
+              try {
+                const stored = settingsLib.getItem("dudu_files") || "[]";
+                const list = JSON.parse(stored);
+                list.push({ fileName: meta.fileName, receivedAt: Date.now() });
+                settingsLib.setItem("dudu_files", JSON.stringify(list));
+                console.log("[side] Metadata saved. Total files:", list.length);
+              } catch (e) {
+                console.log("[side] settingsLib error:", e);
+              }
               res(null, { ok: true, status: r.status });
             } else {
               console.log("[side] upload failed, status:", r.status);
@@ -53,29 +62,6 @@ AppSideService(
             console.log("[side] upload error:", e.message);
             res({ message: e.message });
           });
-      }
-    },
-
-    onReceivedFile(fileObject) {
-      console.log("[side] File received:", JSON.stringify(fileObject));
-
-      const fileName = fileObject.params?.fileName || fileObject.fileName || "unknown";
-      const filePath = fileObject.filePath || "";
-
-      console.log("[side] fileName:", fileName, "filePath:", filePath);
-
-      try {
-        const stored = settingsLib.getItem("dudu_files") || "[]";
-        const list = JSON.parse(stored);
-        list.push({
-          fileName: fileName,
-          filePath: filePath,
-          receivedAt: Date.now(),
-        });
-        settingsLib.setItem("dudu_files", JSON.stringify(list));
-        console.log("[side] Metadata saved. Total files:", list.length);
-      } catch (e) {
-        console.log("[side] settingsLib error:", e);
       }
     },
 
