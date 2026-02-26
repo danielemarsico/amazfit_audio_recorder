@@ -1,1 +1,2 @@
-curl -X POST https://dudu-transcription.marsicod.workers.dev/debug-ogg   -H "Content-Type: application/json"   -H "Authorization: Bearer TEST-API"   -d "{\"fileName\":\"test.opus\",\"data\":\"$(base64 -w0 record_20260222_092548.opus)\"}"   --output converted.ogg
+curl -X POST $WORKER_URL/debug-ogg   -H "Content-Type: application/json"   -H "Authorization: Bearer $API_KEY"   -d "{\"fileName\":\"test.opus\",\"data\":\"$(base64 -w0 record_20260222_092548.opus)\"}"   --output converted.ogg
+python .\test_debug_ogg.py <path-to-opus> --url $WORKER_URL --api-key $API_KEY --upload --lang it --todoist-key $TODOIST_KEY

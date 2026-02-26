@@ -1,10 +1,10 @@
 """
 Test the Cloudflare Worker endpoints.
 Usage:
-  python test_debug_ogg.py <path-to-opus-file>                                          # test Ogg conversion only
-  python test_debug_ogg.py <path-to-opus-file> --upload                                 # transcribe (auto-detect language)
-  python test_debug_ogg.py <path-to-opus-file> --upload --lang it                       # transcribe with language hint
-  python test_debug_ogg.py <path-to-opus-file> --upload --lang it --todoist-key <TOKEN> # transcribe + create Todoist task
+  python test_debug_ogg.py <path-to-opus-file> --url <WORKER_URL> --api-key <KEY>
+  python test_debug_ogg.py <path-to-opus-file> --url <WORKER_URL> --api-key <KEY> --upload
+  python test_debug_ogg.py <path-to-opus-file> --url <WORKER_URL> --api-key <KEY> --upload --lang it
+  python test_debug_ogg.py <path-to-opus-file> --url <WORKER_URL> --api-key <KEY> --upload --lang it --todoist-key <TOKEN>
 """
 
 import sys
@@ -12,16 +12,31 @@ import base64
 import json
 import urllib.request
 
-BASE_URL = "https://dudu-transcription.marsicod.workers.dev"
-API_KEY  = "a3d1c00b-6427-4133-a417-1d2c04c8e193"
-
 def main():
     if len(sys.argv) < 2:
-        print("Usage: python test_debug_ogg.py <path-to-opus-file> [--upload]")
+        print("Usage: python test_debug_ogg.py <path-to-opus-file> --url <WORKER_URL> --api-key <KEY> [--upload]")
         sys.exit(1)
 
     opus_path = sys.argv[1]
     upload_mode = "--upload" in sys.argv
+
+    base_url = None
+    if "--url" in sys.argv:
+        url_idx = sys.argv.index("--url")
+        if url_idx + 1 < len(sys.argv):
+            base_url = sys.argv[url_idx + 1].rstrip("/")
+    if not base_url:
+        print("Error: --url <WORKER_URL> is required")
+        sys.exit(1)
+
+    api_key = None
+    if "--api-key" in sys.argv:
+        ak_idx = sys.argv.index("--api-key")
+        if ak_idx + 1 < len(sys.argv):
+            api_key = sys.argv[ak_idx + 1]
+    if not api_key:
+        print("Error: --api-key <KEY> is required")
+        sys.exit(1)
 
     language = None
     if "--lang" in sys.argv:
@@ -36,7 +51,7 @@ def main():
             todoist_key = sys.argv[tk_idx + 1]
 
     endpoint = "/upload" if upload_mode else "/debug-ogg"
-    url = BASE_URL + endpoint
+    url = base_url + endpoint
     print(f"Endpoint: {url}")
 
     with open(opus_path, "rb") as f:
@@ -62,7 +77,7 @@ def main():
         data=body,
         headers={
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {API_KEY}",
+            "Authorization": f"Bearer {api_key}",
             "User-Agent": "curl/8.16.0",
         },
         method="POST",
