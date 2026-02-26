@@ -9,11 +9,13 @@ AppSideService(
 
     onRequest(req, res) {
       if (req.method === "get.settings") {
-        const url = settingsLib.getItem("dudu_upload_url") || "";
-        const apiKey = settingsLib.getItem("dudu_api_key") || "";
-        const duration = parseInt(settingsLib.getItem("dudu_duration")) || 30;
-        console.log("[side] get.settings -> url:", url, "apiKey:", apiKey ? "(set)" : "(empty)", "duration:", duration);
-        res(null, { url: url, apiKey: apiKey, duration: duration });
+        const url         = settingsLib.getItem("dudu_upload_url") || "";
+        const apiKey      = settingsLib.getItem("dudu_api_key") || "";
+        const duration    = parseInt(settingsLib.getItem("dudu_duration")) || 30;
+        const todoistKey  = settingsLib.getItem("dudu_todoist_key") || "";
+        const language    = settingsLib.getItem("dudu_language") || "it";
+        console.log("[side] get.settings -> url:", url, "apiKey:", apiKey ? "(set)" : "(empty)", "duration:", duration, "lang:", language, "todoist:", todoistKey ? "(set)" : "(empty)");
+        res(null, { url, apiKey, duration, todoistKey, language });
       }
     },
 

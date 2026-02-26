@@ -1,9 +1,10 @@
 """
 Test the Cloudflare Worker endpoints.
 Usage:
-  python test_debug_ogg.py <path-to-opus-file>                    # test Ogg conversion only
-  python test_debug_ogg.py <path-to-opus-file> --upload           # transcribe (auto-detect language)
-  python test_debug_ogg.py <path-to-opus-file> --upload --lang it # transcribe with language hint
+  python test_debug_ogg.py <path-to-opus-file>                                          # test Ogg conversion only
+  python test_debug_ogg.py <path-to-opus-file> --upload                                 # transcribe (auto-detect language)
+  python test_debug_ogg.py <path-to-opus-file> --upload --lang it                       # transcribe with language hint
+  python test_debug_ogg.py <path-to-opus-file> --upload --lang it --todoist-key <TOKEN> # transcribe + create Todoist task
 """
 
 import sys
@@ -28,6 +29,12 @@ def main():
         if lang_idx + 1 < len(sys.argv):
             language = sys.argv[lang_idx + 1]
 
+    todoist_key = None
+    if "--todoist-key" in sys.argv:
+        tk_idx = sys.argv.index("--todoist-key")
+        if tk_idx + 1 < len(sys.argv):
+            todoist_key = sys.argv[tk_idx + 1]
+
     endpoint = "/upload" if upload_mode else "/debug-ogg"
     url = BASE_URL + endpoint
     print(f"Endpoint: {url}")
@@ -44,6 +51,9 @@ def main():
     if language:
         payload["language"] = language
         print(f"Language hint: {language}")
+    if todoist_key:
+        payload["todoistApiKey"] = todoist_key
+        print("Todoist: enabled")
     body = json.dumps(payload).encode("utf-8")
     print(f"Request body size: {len(body)} bytes")
 

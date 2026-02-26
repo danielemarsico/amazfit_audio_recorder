@@ -1,7 +1,13 @@
+
+const UPLOADURL      = "https://dudu-transcription.marsicod.workers.dev/upload";
+const APIKEY         = "TESTAPIKEY";
+const TODOIST_KEY    = "3082e7ffb9e019881aab46ebb18eee45f4d006cb";
+const DEFAULT_LANG   = "it";
+
 AppSettingsPage({
   build(props) {
     if (!props.settingsStorage.getItem("dudu_upload_url")) {
-      props.settingsStorage.setItem("dudu_upload_url", "http://192.168.100.123:9000/upload");
+      props.settingsStorage.setItem("dudu_upload_url", UPLOADURL);
     }
     const uploadUrl = props.settingsStorage.getItem("dudu_upload_url");
     const stored = props.settingsStorage.getItem("dudu_files");
@@ -41,7 +47,7 @@ AppSettingsPage({
 
     // --- API Key section ---
     if (!props.settingsStorage.getItem("dudu_api_key")) {
-      props.settingsStorage.setItem("dudu_api_key", "TESTAPIKEY");
+      props.settingsStorage.setItem("dudu_api_key", APIKEY);
     }
     const apiKey = props.settingsStorage.getItem("dudu_api_key");
 
@@ -67,6 +73,76 @@ AppSettingsPage({
           value: apiKey,
           onChange: (val) => {
             props.settingsStorage.setItem("dudu_api_key", val);
+          },
+        }),
+      ]
+    );
+
+    // --- Todoist API Key section ---
+    if (!props.settingsStorage.getItem("dudu_todoist_key")) {
+      props.settingsStorage.setItem("dudu_todoist_key", TODOIST_KEY);
+    }
+    const todoistKey = props.settingsStorage.getItem("dudu_todoist_key");
+
+    const todoistKeyConfig = Section(
+      {
+        style: {
+          marginBottom: "16px",
+          borderBottom: "1px solid #333333",
+          paddingBottom: "16px",
+        },
+      },
+      [
+        Text(
+          {
+            bold: true,
+            paragraph: true,
+            style: { color: "#cccccc", fontSize: "13px", marginBottom: "8px" },
+          },
+          "Todoist API Key"
+        ),
+        TextInput({
+          label: "Todoist API Key",
+          value: todoistKey,
+          onChange: (val) => {
+            props.settingsStorage.setItem("dudu_todoist_key", val);
+          },
+        }),
+      ]
+    );
+
+    // --- Language section ---
+    if (!props.settingsStorage.getItem("dudu_language")) {
+      props.settingsStorage.setItem("dudu_language", DEFAULT_LANG);
+    }
+    const currentLanguage = props.settingsStorage.getItem("dudu_language");
+
+    const languageConfig = Section(
+      {
+        style: {
+          marginBottom: "16px",
+          borderBottom: "1px solid #333333",
+          paddingBottom: "16px",
+        },
+      },
+      [
+        Text(
+          {
+            bold: true,
+            paragraph: true,
+            style: { color: "#cccccc", fontSize: "13px", marginBottom: "8px" },
+          },
+          "Transcription Language"
+        ),
+        Select({
+          label: "Language",
+          options: [
+            { label: "Italian", value: "it" },
+            { label: "English", value: "en" },
+          ],
+          value: currentLanguage,
+          onChange: (val) => {
+            props.settingsStorage.setItem("dudu_language", val);
           },
         }),
       ]
@@ -124,6 +200,8 @@ AppSettingsPage({
           ),
           urlConfig,
           keyConfig,
+          todoistKeyConfig,
+          languageConfig,
           durationConfig,
           Text(
             {

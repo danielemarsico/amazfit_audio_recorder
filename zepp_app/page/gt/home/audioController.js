@@ -6,8 +6,13 @@ import TransferFile from "@zos/ble/TransferFile";
 export const FOLDER_PATH = "data://dudus/";
 
 let _recordDuration = 30;
-let _uploadUrl = "http://192.168.100.123:9000/upload";
-let _apiKey = "TESTAPIKEY";
+let _uploadUrl  = "";
+let _apiKey     = "";
+let _language   = "it";
+let _todoistKey = "";
+
+
+
 
 export function getRecordDuration() {
   return _recordDuration;
@@ -32,6 +37,14 @@ export function fetchSettings(requestFn, callback) {
         _recordDuration = result.duration;
         console.log("[settings] Duration:", _recordDuration);
       }
+      if (result && result.language) {
+        _language = result.language;
+        console.log("[settings] Language:", _language);
+      }
+      if (result && result.todoistKey) {
+        _todoistKey = result.todoistKey;
+        console.log("[settings] Todoist key set");
+      }
       if (callback) callback();
     })
     .catch(function (e) {
@@ -50,9 +63,9 @@ function getUploadHeaders() {
 
 function makeUploadBody(fileName, base64) {
   const body = { fileName: fileName, data: base64 };
-  if (_apiKey) {
-    body.apiKey = _apiKey;
-  }
+  if (_apiKey)     body.apiKey      = _apiKey;
+  if (_language)   body.language    = _language;
+  if (_todoistKey) body.todoistApiKey = _todoistKey;
   return JSON.stringify(body);
 }
 

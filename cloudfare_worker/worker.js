@@ -198,6 +198,38 @@ async function transcribeWithCfAi(oggBytes, ai, language) {
 }
 
 // ---------------------------------------------------------------------------
+// Todoist integration
+// ---------------------------------------------------------------------------
+
+const TODOIST_MAX_TITLE = 500;
+
+async function createTodoistTask(transcription, todoistApiKey) {
+  const title = transcription.length > TODOIST_MAX_TITLE
+    ? transcription.slice(0, TODOIST_MAX_TITLE - 1) + '…'
+    : transcription;
+
+  const resp = await fetch('https://api.todoist.com/api/v1/tasks', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${todoistApiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      content: title,
+      description: transcription,
+      due_string: 'today',
+    }),
+  });
+
+  if (!resp.ok) {
+    const err = await resp.text();
+    throw new Error(`Todoist API error ${resp.status}: ${err}`);
+  }
+
+  return await resp.json();
+}
+
+// ---------------------------------------------------------------------------
 // Worker entry point
 // ---------------------------------------------------------------------------
 
@@ -234,7 +266,7 @@ export default {
       });
     }
 
-    const { fileName, data: base64Data, language } = body;
+    const { fileName, data: base64Data, language, todoistApiKey } = body;
     if (!base64Data) return json400('Missing data field');
 
     // --- Decode ---
@@ -277,8 +309,18 @@ export default {
       return json500('Transcription failed: ' + e.message);
     }
 
+    // --- Create Todoist task (optional) ---
+    let todoistTask = null;
+    if (todoistApiKey) {
+      try {
+        todoistTask = await createTodoistTask(transcription, todoistApiKey);
+      } catch (e) {
+        return json500('Todoist error: ' + e.message);
+      }
+    }
+
     return new Response(
-      JSON.stringify({ ok: true, file: fileName, size: audioBytes.length, transcription }),
+      JSON.stringify({ ok: true, file: fileName, size: audioBytes.length, transcription, todoistTask }),
       { headers: { 'Content-Type': 'application/json' } },
     );
   },
