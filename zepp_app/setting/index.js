@@ -1,6 +1,6 @@
 
 const UPLOADURL      = "https://dudu-transcription.marsicod.workers.dev/upload";
-const APIKEY         = "TESTAPIKEY";
+const APIKEY         = "a3d1c00b-6427-4133-a417-1d2c04c8e193";
 const TODOIST_KEY    = "3082e7ffb9e019881aab46ebb18eee45f4d006cb";
 const DEFAULT_LANG   = "it";
 
@@ -137,10 +137,10 @@ AppSettingsPage({
         Select({
           label: "Language",
           options: [
-            { label: "Italian", value: "it" },
-            { label: "English", value: "en" },
+            { name: "Italian", value: "it" },
+            { name: "English", value: "en" },
           ],
-          value: currentLanguage,
+          defaultValue: currentLanguage,
           onChange: (val) => {
             props.settingsStorage.setItem("dudu_language", val);
           },
@@ -320,6 +320,8 @@ AppSettingsPage({
         ),
         urlConfig,
         keyConfig,
+        todoistKeyConfig,
+        languageConfig,
         durationConfig,
         Text(
           {
