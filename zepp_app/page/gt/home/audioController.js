@@ -53,21 +53,6 @@ export function fetchSettings(requestFn, callback) {
     });
 }
 
-function getUploadHeaders() {
-  const headers = { "Content-Type": "application/json" };
-  if (_apiKey) {
-    headers["Authorization"] = "Bearer " + _apiKey;
-  }
-  return headers;
-}
-
-function makeUploadBody(fileName, base64) {
-  const body = { fileName: fileName, data: base64 };
-  if (_apiKey)     body.apiKey      = _apiKey;
-  if (_language)   body.language    = _language;
-  if (_todoistKey) body.todoistApiKey = _todoistKey;
-  return JSON.stringify(body);
-}
 
 const AUDIO_FOLDER = 'dudus';
 
@@ -91,22 +76,22 @@ export function generateFilename() {
   return FOLDER_PATH + `record_${year}${month}${day}_${hours}${minutes}${seconds}.opus`;
 }
 
-const B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-
-export function arrayBufferToBase64(buffer) {
-  const bytes = new Uint8Array(buffer);
-  let result = "";
-  const len = bytes.length;
-  for (let i = 0; i < len; i += 3) {
-    const a = bytes[i];
-    const b = i + 1 < len ? bytes[i + 1] : 0;
-    const c = i + 2 < len ? bytes[i + 2] : 0;
-    result += B64[a >> 2];
-    result += B64[((a & 3) << 4) | (b >> 4)];
-    result += i + 1 < len ? B64[((b & 15) << 2) | (c >> 6)] : "=";
-    result += i + 2 < len ? B64[c & 63] : "=";
-  }
-  return result;
+/**
+ * Pack fileName + raw audio bytes into a single binary buffer for BLE transfer.
+ * Format: [4 bytes LE: meta JSON length][meta JSON bytes][raw audio bytes]
+ * The side service unpacks this, base64-encodes the audio, and POSTs to the worker.
+ */
+function makeAudioPayload(fileName, audioBuffer) {
+  const meta = JSON.stringify({ fileName });
+  const metaLen = meta.length;
+  const payload = new Uint8Array(4 + metaLen + audioBuffer.byteLength);
+  payload[0] =  metaLen        & 0xff;
+  payload[1] = (metaLen >>  8) & 0xff;
+  payload[2] = (metaLen >> 16) & 0xff;
+  payload[3] = (metaLen >> 24) & 0xff;
+  for (let i = 0; i < metaLen; i++) payload[4 + i] = meta.charCodeAt(i);
+  payload.set(new Uint8Array(audioBuffer), 4 + metaLen);
+  return payload.buffer;
 }
 
 let transferFileInstance = null;
@@ -214,17 +199,9 @@ export function syncSingleFile(fileName, requestFn, statusCallback, doneCallback
     }
 
     console.log("[sync] Read", fileName, "size:", data.byteLength);
-    const base64 = arrayBufferToBase64(data);
+    const payload = makeAudioPayload(fileName, data);
 
-    requestFn({
-      method: "http.request",
-      params: {
-        url: _uploadUrl,
-        method: "POST",
-        headers: getUploadHeaders(),
-        body: makeUploadBody(fileName, base64),
-      },
-    })
+    requestFn(payload)
       .then(function (res) {
         console.log("[sync] Upload OK:", fileName, JSON.stringify(res));
         doBleTransfer(true);
