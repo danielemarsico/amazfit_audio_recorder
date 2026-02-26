@@ -102,6 +102,9 @@
   "i18n": {
     "en-US": {
       "appName": "DuDu"
+    },
+    "it-IT": {
+      "appName": "DuDu"
     }
   }
 }
