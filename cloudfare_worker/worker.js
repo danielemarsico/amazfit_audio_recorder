@@ -266,7 +266,7 @@ export default {
       });
     }
 
-    const { fileName, data: base64Data, language, todoistApiKey } = body;
+    const { fileName, data: base64Data, language = 'en', todoistApiKey } = body;
     if (!base64Data) return json400('Missing data field');
 
     // --- Decode ---

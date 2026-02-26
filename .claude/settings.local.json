@@ -16,7 +16,9 @@
       "WebFetch(domain:zepp-health.github.io)",
       "WebFetch(domain:codeberg.org)",
       "Bash(where:*)",
-      "Bash(git tag:*)"
+      "Bash(git tag:*)",
+      "Bash(npm run deploy:*)",
+      "Bash(npx wrangler secret put:*)"
     ]
   }
 }
