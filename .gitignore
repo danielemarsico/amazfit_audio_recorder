@@ -1,4 +1,5 @@
 .DS_Store
+zepp_app/secrets.js
 node_modules/**
 dist/*
 npm-debug.log

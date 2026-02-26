@@ -1,8 +1,5 @@
 
-const UPLOADURL      = "https://dudu-transcription.marsicod.workers.dev/upload";
-const APIKEY         = "a3d1c00b-6427-4133-a417-1d2c04c8e193";
-const TODOIST_KEY    = "3082e7ffb9e019881aab46ebb18eee45f4d006cb";
-const DEFAULT_LANG   = "it";
+import { UPLOADURL, APIKEY, TODOIST_KEY, DEFAULT_LANG } from '../secrets.js';
 
 AppSettingsPage({
   build(props) {
