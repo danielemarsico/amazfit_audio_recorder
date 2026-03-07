@@ -277,7 +277,7 @@ AppSettingsPage({
                   try { list = JSON.parse(stored); } catch (e) {}
                   const updated = list.filter((f) => f.fileName !== file.fileName);
                   props.settingsStorage.setItem("dudu_files", JSON.stringify(updated));
-                  props.settingsStorage.removeItem("dudu_data_" + file.fileName);
+                  props.settingsStorage.setItem("dudu_data_" + file.fileName, "");
                 },
               }),
             ]
