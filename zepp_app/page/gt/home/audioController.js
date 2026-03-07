@@ -118,6 +118,22 @@ function getOutbox() {
   return transferFileInstance.getOutbox();
 }
 
+function checkConnection(requestFn, callback) {
+  if (!requestFn || !_uploadUrl) {
+    callback(false);
+    return;
+  }
+  requestFn({
+    method: "http.request",
+    params: {
+      url: _uploadUrl,
+      method: "GET",
+    },
+  })
+    .then(function () { callback(true); })
+    .catch(function () { callback(false); });
+}
+
 export function syncAllFiles(requestFn, statusCallback, doneCallback) {
   const files = listAudioFiles();
   if (files.length === 0) {
@@ -126,6 +142,18 @@ export function syncAllFiles(requestFn, statusCallback, doneCallback) {
     return;
   }
 
+  statusCallback("Checking...");
+  checkConnection(requestFn, function (connected) {
+    if (!connected) {
+      statusCallback("Not connected");
+      if (doneCallback) doneCallback();
+      return;
+    }
+    doSyncAll(files, requestFn, statusCallback, doneCallback);
+  });
+}
+
+function doSyncAll(files, requestFn, statusCallback, doneCallback) {
   let index = 0;
   let hadError = false;
 
