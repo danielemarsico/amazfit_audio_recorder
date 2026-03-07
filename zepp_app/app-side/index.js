@@ -13,23 +13,6 @@ AppSideService(
         console.log("[side] get.settings -> duration:", duration);
         res(null, { duration });
 
-      } else if (req.method === "check.connection") {
-        const url = settingsLib.getItem("dudu_upload_url") || "";
-        if (!url) {
-          console.log("[side] check.connection -> no URL configured");
-          res(null, { connected: false });
-          return;
-        }
-        fetch(url)
-          .then(() => {
-            console.log("[side] check.connection -> OK");
-            res(null, { connected: true });
-          })
-          .catch(() => {
-            console.log("[side] check.connection -> failed");
-            res(null, { connected: false });
-          });
-
       } else if (req.method === "upload.file") {
         const { fileName, base64 } = req.params;
         const url        = settingsLib.getItem("dudu_upload_url") || "";

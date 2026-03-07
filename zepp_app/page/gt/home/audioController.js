@@ -73,16 +73,6 @@ export function arrayBufferToBase64(buffer) {
 }
 
 
-function checkConnection(requestFn, callback) {
-  if (!requestFn) {
-    callback(false);
-    return;
-  }
-  requestFn({ method: "check.connection" })
-    .then(function (res) { callback(res && res.connected); })
-    .catch(function () { callback(false); });
-}
-
 export function syncAllFiles(requestFn, statusCallback, doneCallback) {
   const files = listAudioFiles();
   if (files.length === 0) {
@@ -91,15 +81,7 @@ export function syncAllFiles(requestFn, statusCallback, doneCallback) {
     return;
   }
 
-  statusCallback("Checking...");
-  checkConnection(requestFn, function (connected) {
-    if (!connected) {
-      statusCallback("Not connected");
-      if (doneCallback) doneCallback();
-      return;
-    }
-    doSyncAll(files, requestFn, statusCallback, doneCallback);
-  });
+  doSyncAll(files, requestFn, statusCallback, doneCallback);
 }
 
 function doSyncAll(files, requestFn, statusCallback, doneCallback) {
