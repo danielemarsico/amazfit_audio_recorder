@@ -17,8 +17,9 @@
       "WebFetch(domain:codeberg.org)",
       "Bash(where:*)",
       "Bash(git tag:*)",
-      "Bash(npm run deploy:*)",
-      "Bash(npx wrangler secret put:*)"
+      "Bash(openssl rand:*)",
+      "Bash(xargs grep:*)",
+      "Bash(git checkout:*)"
     ]
   }
 }

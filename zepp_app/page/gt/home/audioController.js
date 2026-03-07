@@ -6,10 +6,6 @@ import TransferFile from "@zos/ble/TransferFile";
 export const FOLDER_PATH = "data://dudus/";
 
 let _recordDuration = 30;
-let _uploadUrl  = "";
-let _apiKey     = "";
-let _language   = "it";
-let _todoistKey = "";
 
 
 
@@ -25,25 +21,9 @@ export function fetchSettings(requestFn, callback) {
   }
   requestFn({ method: "get.settings" })
     .then(function (result) {
-      if (result && result.url) {
-        _uploadUrl = result.url;
-        console.log("[settings] URL:", _uploadUrl);
-      }
-      if (result && result.apiKey) {
-        _apiKey = result.apiKey;
-        console.log("[settings] API key set");
-      }
       if (result && result.duration) {
         _recordDuration = result.duration;
         console.log("[settings] Duration:", _recordDuration);
-      }
-      if (result && result.language) {
-        _language = result.language;
-        console.log("[settings] Language:", _language);
-      }
-      if (result && result.todoistKey) {
-        _todoistKey = result.todoistKey;
-        console.log("[settings] Todoist key set");
       }
       if (callback) callback();
     })
@@ -51,22 +31,6 @@ export function fetchSettings(requestFn, callback) {
       console.log("[settings] fetch error:", e);
       if (callback) callback();
     });
-}
-
-function getUploadHeaders() {
-  const headers = { "Content-Type": "application/json" };
-  if (_apiKey) {
-    headers["Authorization"] = "Bearer " + _apiKey;
-  }
-  return headers;
-}
-
-function makeUploadBody(fileName, base64) {
-  const body = { fileName: fileName, data: base64 };
-  if (_apiKey)     body.apiKey      = _apiKey;
-  if (_language)   body.language    = _language;
-  if (_todoistKey) body.todoistApiKey = _todoistKey;
-  return JSON.stringify(body);
 }
 
 const AUDIO_FOLDER = 'dudus';
@@ -119,18 +83,12 @@ function getOutbox() {
 }
 
 function checkConnection(requestFn, callback) {
-  if (!requestFn || !_uploadUrl) {
+  if (!requestFn) {
     callback(false);
     return;
   }
-  requestFn({
-    method: "http.request",
-    params: {
-      url: _uploadUrl,
-      method: "GET",
-    },
-  })
-    .then(function () { callback(true); })
+  requestFn({ method: "check.connection" })
+    .then(function (res) { callback(res && res.connected); })
     .catch(function () { callback(false); });
 }
 
@@ -245,13 +203,8 @@ export function syncSingleFile(fileName, requestFn, statusCallback, doneCallback
     const base64 = arrayBufferToBase64(data);
 
     requestFn({
-      method: "http.request",
-      params: {
-        url: _uploadUrl,
-        method: "POST",
-        headers: getUploadHeaders(),
-        body: makeUploadBody(fileName, base64),
-      },
+      method: "upload.file",
+      params: { fileName, base64 },
     })
       .then(function (res) {
         console.log("[sync] Upload OK:", fileName, JSON.stringify(res));
