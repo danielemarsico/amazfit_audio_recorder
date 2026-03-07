@@ -272,10 +272,7 @@ AppSettingsPage({
                   marginLeft: "8px",
                 },
                 click_func: () => {
-                  const stored = props.settingsStorage.getItem("dudu_files") || "[]";
-                  let list = [];
-                  try { list = JSON.parse(stored); } catch (e) {}
-                  const updated = list.filter((f) => f.fileName !== file.fileName);
+                  const updated = files.filter((f) => f.fileName !== file.fileName);
                   props.settingsStorage.setItem("dudu_files", JSON.stringify(updated));
                   props.settingsStorage.setItem("dudu_data_" + file.fileName, "");
                 },
