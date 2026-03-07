@@ -212,7 +212,7 @@ AppSettingsPage({
     }
 
     const fileItems = files.map(function (file, index) {
-      const date = new Date(file.receivedAt);
+      const date = new Date(file.uploadedAt || file.receivedAt);
       const dateStr =
         date.getFullYear() +
         "-" +
