@@ -205,7 +205,7 @@ AppSettingsPage({
               paragraph: true,
               style: { marginTop: "20px", color: "#999999" },
             },
-            "No recordings transferred yet. Open DuDu on your watch to record and transfer."
+            "No recordings uploaded yet. Open DuDu on your watch and tap Sync."
           ),
         ]
       );
@@ -257,38 +257,29 @@ AppSettingsPage({
                       paragraph: true,
                       style: { color: "#888888", fontSize: "12px", marginTop: "4px" },
                     },
-                    "Received: " + dateStr
+                    "Uploaded: " + dateStr
                   ),
                 ]
               ),
-              props.settingsStorage.getItem("dudu_uploaded_" + file.fileName)
-                ? Text(
-                    {
-                      style: {
-                        fontSize: "12px",
-                        color: "#4caf50",
-                        marginLeft: "8px",
-                      },
-                    },
-                    "Uploaded"
-                  )
-                : Button({
-                    label: "Upload",
-                    style: {
-                      fontSize: "12px",
-                      borderRadius: "20px",
-                      background: "#4caf50",
-                      color: "white",
-                      padding: "6px 14px",
-                      marginLeft: "8px",
-                    },
-                    click_func: () => {
-                      props.settingsStorage.setItem(
-                        "dudu_uploaded_" + file.fileName,
-                        "uploaded"
-                      );
-                    },
-                  }),
+              Button({
+                label: "Delete",
+                style: {
+                  fontSize: "12px",
+                  borderRadius: "20px",
+                  background: "#e53935",
+                  color: "white",
+                  padding: "6px 14px",
+                  marginLeft: "8px",
+                },
+                click_func: () => {
+                  const stored = props.settingsStorage.getItem("dudu_files") || "[]";
+                  let list = [];
+                  try { list = JSON.parse(stored); } catch (e) {}
+                  const updated = list.filter((f) => f.fileName !== file.fileName);
+                  props.settingsStorage.setItem("dudu_files", JSON.stringify(updated));
+                  props.settingsStorage.removeItem("dudu_data_" + file.fileName);
+                },
+              }),
             ]
           ),
         ]

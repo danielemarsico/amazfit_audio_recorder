@@ -13,6 +13,23 @@ AppSideService(
         console.log("[side] get.settings -> duration:", duration);
         res(null, { duration });
 
+      } else if (req.method === "check.connection") {
+        const url = settingsLib.getItem("dudu_upload_url") || "";
+        if (!url) {
+          console.log("[side] check.connection -> no URL configured");
+          res(null, { connected: false });
+          return;
+        }
+        fetch(url)
+          .then(() => {
+            console.log("[side] check.connection -> OK");
+            res(null, { connected: true });
+          })
+          .catch(() => {
+            console.log("[side] check.connection -> failed");
+            res(null, { connected: false });
+          });
+
       } else if (req.method === "upload.file") {
         const { fileName, base64 } = req.params;
         const url        = settingsLib.getItem("dudu_upload_url") || "";
@@ -37,35 +54,23 @@ AppSideService(
         fetch(url, { method: "POST", headers, body: JSON.stringify(body) })
           .then(() => {
             console.log("[side] upload.file OK:", fileName);
+            try {
+              const stored = settingsLib.getItem("dudu_files") || "[]";
+              const list = JSON.parse(stored);
+              const idx = list.findIndex((f) => f.fileName === fileName);
+              const entry = { fileName, uploadedAt: Date.now() };
+              if (idx >= 0) list[idx] = entry; else list.push(entry);
+              settingsLib.setItem("dudu_files", JSON.stringify(list));
+              settingsLib.setItem("dudu_data_" + fileName, base64);
+            } catch (e) {
+              console.log("[side] settingsLib save error:", e);
+            }
             res(null, { ok: true });
           })
           .catch((e) => {
             console.log("[side] upload.file error:", fileName, e);
             res(e && e.message ? e.message : "upload failed");
           });
-      }
-    },
-
-    onReceivedFile(fileObject) {
-      console.log("[side] File received:", JSON.stringify(fileObject));
-
-      const fileName = fileObject.params?.fileName || fileObject.fileName || "unknown";
-      const filePath = fileObject.filePath || "";
-
-      console.log("[side] fileName:", fileName, "filePath:", filePath);
-
-      try {
-        const stored = settingsLib.getItem("dudu_files") || "[]";
-        const list = JSON.parse(stored);
-        list.push({
-          fileName: fileName,
-          filePath: filePath,
-          receivedAt: Date.now(),
-        });
-        settingsLib.setItem("dudu_files", JSON.stringify(list));
-        console.log("[side] Metadata saved. Total files:", list.length);
-      } catch (e) {
-        console.log("[side] settingsLib error:", e);
       }
     },
 
