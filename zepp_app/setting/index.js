@@ -271,7 +271,7 @@ AppSettingsPage({
                   padding: "6px 14px",
                   marginLeft: "8px",
                 },
-                click_func: () => {
+                onClick: () => {
                   const updated = files.filter((f) => f.fileName !== file.fileName);
                   props.settingsStorage.setItem("dudu_files", JSON.stringify(updated));
                   props.settingsStorage.setItem("dudu_data_" + file.fileName, "");
