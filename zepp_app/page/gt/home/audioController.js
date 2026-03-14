@@ -1,8 +1,11 @@
 import { readdirSync, rmSync, mkdirSync, readFileSync } from '@zos/fs';
 import { createRecorder, createPlayer, codec } from './recorderFacade.js';
 import { setInterval, clearInterval } from '@zos/timer';
+import { SIMULATOR_MODE } from './config.js';
 
-export const FOLDER_PATH = "data://dudus/";
+const AUDIO_FOLDER = 'dudus';
+export const FOLDER_PATH = `data://${AUDIO_FOLDER}/`;
+
 
 let _recordDuration = 30;
 
@@ -32,7 +35,7 @@ export function fetchSettings(requestFn, callback) {
     });
 }
 
-const AUDIO_FOLDER = 'dudus';
+
 
 export function ensureFolder() {
   try {
@@ -110,6 +113,9 @@ function doSyncAll(files, requestFn, statusCallback, doneCallback) {
 }
 
 export function syncSingleFile(fileName, requestFn, statusCallback, doneCallback) {
+  if (fileName.startsWith(FOLDER_PATH)) {
+    fileName = fileName.slice(FOLDER_PATH.length);
+  }
   statusCallback("Uploading...");
 
   function finish(msg) {

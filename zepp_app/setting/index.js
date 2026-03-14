@@ -1,5 +1,14 @@
 
-import { UPLOADURL, APIKEY, TODOIST_KEY, DEFAULT_LANG } from '../secrets.js';
+import { UPLOADURL, APIKEY, TODOIST_KEY } from '../secrets.js';
+
+// Keep in sync with zepp_app/config.js
+const SIMULATOR_MODE = true;
+
+const FAKE_FILES = [
+  { fileName: "record_20260314_091500.opus", uploadedAt: "2026-03-14T09:15:00Z" },
+  { fileName: "record_20260314_103022.opus", uploadedAt: "2026-03-14T10:30:22Z" },
+  { fileName: "record_20260313_184501.opus", uploadedAt: "2026-03-13T18:45:01Z" },
+];
 
 AppSettingsPage({
   build(props) {
@@ -7,12 +16,16 @@ AppSettingsPage({
       props.settingsStorage.setItem("dudu_upload_url", UPLOADURL);
     }
     const uploadUrl = props.settingsStorage.getItem("dudu_upload_url");
-    const stored = props.settingsStorage.getItem("dudu_files");
     let files = [];
-    try {
-      files = stored ? JSON.parse(stored) : [];
-    } catch (e) {
-      files = [];
+    if (SIMULATOR_MODE) {
+      files = FAKE_FILES;
+    } else {
+      const stored = props.settingsStorage.getItem("dudu_files");
+      try {
+        files = stored ? JSON.parse(stored) : [];
+      } catch (e) {
+        files = [];
+      }
     }
 
     const urlConfig = Section(
@@ -28,12 +41,12 @@ AppSettingsPage({
           {
             bold: true,
             paragraph: true,
-            style: { color: "#cccccc", fontSize: "13px", marginBottom: "8px" },
+            style: { color: "#ffffff", fontSize: "13px", marginBottom: "8px" },
           },
           "Upload URL (HTTP POST)"
         ),
         TextInput({
-          label: "Upload URL",
+          label: "",
           value: uploadUrl,
           onChange: (val) => {
             props.settingsStorage.setItem("dudu_upload_url", val);
@@ -61,12 +74,12 @@ AppSettingsPage({
           {
             bold: true,
             paragraph: true,
-            style: { color: "#cccccc", fontSize: "13px", marginBottom: "8px" },
+            style: { color: "#ffffff", fontSize: "13px", marginBottom: "8px" },
           },
           "API Key"
         ),
         TextInput({
-          label: "API Key",
+          label: "",
           value: apiKey,
           onChange: (val) => {
             props.settingsStorage.setItem("dudu_api_key", val);
@@ -94,12 +107,12 @@ AppSettingsPage({
           {
             bold: true,
             paragraph: true,
-            style: { color: "#cccccc", fontSize: "13px", marginBottom: "8px" },
+            style: { color: "#ffffff", fontSize: "13px", marginBottom: "8px" },
           },
           "Todoist API Key"
         ),
         TextInput({
-          label: "Todoist API Key",
+          label: "",
           value: todoistKey,
           onChange: (val) => {
             props.settingsStorage.setItem("dudu_todoist_key", val);
@@ -110,7 +123,7 @@ AppSettingsPage({
 
     // --- Language section ---
     if (!props.settingsStorage.getItem("dudu_language")) {
-      props.settingsStorage.setItem("dudu_language", DEFAULT_LANG);
+      props.settingsStorage.setItem("dudu_language", "en");
     }
     const currentLanguage = props.settingsStorage.getItem("dudu_language");
 
@@ -127,12 +140,12 @@ AppSettingsPage({
           {
             bold: true,
             paragraph: true,
-            style: { color: "#cccccc", fontSize: "13px", marginBottom: "8px" },
+            style: { color: "#ffffff", fontSize: "13px", marginBottom: "8px" },
           },
           "Transcription Language"
         ),
         Select({
-          label: "Language",
+          label: "",
           options: [
             { name: "Italian", value: "it" },
             { name: "English", value: "en" },
@@ -161,7 +174,7 @@ AppSettingsPage({
           {
             bold: true,
             paragraph: true,
-            style: { color: "#cccccc", fontSize: "13px", marginBottom: "8px" },
+            style: { color: "#ffffff", fontSize: "13px", marginBottom: "8px" },
           },
           "Recording Duration: " + currentDuration + "s"
         ),
@@ -184,6 +197,8 @@ AppSettingsPage({
           style: {
             padding: "20px",
             textAlign: "center",
+            backgroundColor: "#0a1628",
+            minHeight: "100%",
           },
         },
         [
@@ -211,7 +226,7 @@ AppSettingsPage({
       );
     }
 
-    const fileItems = files.map(function (file, index) {
+    const fileItems = files.map(function (file) {
       const date = new Date(file.uploadedAt || file.receivedAt);
       const dateStr =
         date.getFullYear() +
@@ -287,6 +302,8 @@ AppSettingsPage({
       {
         style: {
           padding: "20px",
+          backgroundColor: "#0a1628",
+          minHeight: "100%",
         },
       },
       [
