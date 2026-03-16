@@ -146,6 +146,7 @@ export function syncSingleFile(fileName, requestFn, statusCallback, doneCallback
     })
       .then(function (res) {
         console.log("[sync] Upload OK:", fileName, JSON.stringify(res));
+        deleteAudioFile(fileName);
         finish("Synced!");
       })
       .catch(function (e) {
