@@ -1,14 +1,13 @@
 import { readdirSync, rmSync, mkdirSync, readFileSync } from '@zos/fs';
 import { createRecorder, createPlayer, codec } from './recorderFacade.js';
 import { setInterval, clearInterval } from '@zos/timer';
+import { SIMULATOR_MODE } from './config.js';
 
-export const FOLDER_PATH = "data://dudus/";
+const AUDIO_FOLDER = 'dudus';
+export const FOLDER_PATH = `data://${AUDIO_FOLDER}/`;
+
 
 let _recordDuration = 30;
-let _uploadUrl  = "";
-let _apiKey     = "";
-let _language   = "it";
-let _todoistKey = "";
 
 
 
@@ -24,25 +23,9 @@ export function fetchSettings(requestFn, callback) {
   }
   requestFn({ method: "get.settings" })
     .then(function (result) {
-      if (result && result.url) {
-        _uploadUrl = result.url;
-        console.log("[settings] URL:", _uploadUrl);
-      }
-      if (result && result.apiKey) {
-        _apiKey = result.apiKey;
-        console.log("[settings] API key set");
-      }
       if (result && result.duration) {
         _recordDuration = result.duration;
         console.log("[settings] Duration:", _recordDuration);
-      }
-      if (result && result.language) {
-        _language = result.language;
-        console.log("[settings] Language:", _language);
-      }
-      if (result && result.todoistKey) {
-        _todoistKey = result.todoistKey;
-        console.log("[settings] Todoist key set");
       }
       if (callback) callback();
     })
@@ -53,7 +36,6 @@ export function fetchSettings(requestFn, callback) {
 }
 
 
-const AUDIO_FOLDER = 'dudus';
 
 export function ensureFolder() {
   try {
@@ -102,6 +84,10 @@ export function syncAllFiles(requestFn, statusCallback, doneCallback) {
     return;
   }
 
+  doSyncAll(files, requestFn, statusCallback, doneCallback);
+}
+
+function doSyncAll(files, requestFn, statusCallback, doneCallback) {
   let index = 0;
   let hadError = false;
 
@@ -127,6 +113,9 @@ export function syncAllFiles(requestFn, statusCallback, doneCallback) {
 }
 
 export function syncSingleFile(fileName, requestFn, statusCallback, doneCallback) {
+  if (fileName.startsWith(FOLDER_PATH)) {
+    fileName = fileName.slice(FOLDER_PATH.length);
+  }
   statusCallback("Uploading...");
 
   function finish(msg) {
@@ -149,11 +138,15 @@ export function syncSingleFile(fileName, requestFn, statusCallback, doneCallback
     }
 
     console.log("[sync] Read", fileName, "size:", data.byteLength);
-    const payload = makeAudioPayload(fileName, data);
+    const base64 = arrayBufferToBase64(data);
 
-    requestFn(payload)
+    requestFn({
+      method: "upload.file",
+      params: { fileName, base64 },
+    })
       .then(function (res) {
         console.log("[sync] Upload OK:", fileName, JSON.stringify(res));
+        deleteAudioFile(fileName);
         finish("Synced!");
       })
       .catch(function (e) {

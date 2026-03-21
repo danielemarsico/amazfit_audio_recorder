@@ -20,6 +20,9 @@
       "Bash(npm run deploy:*)",
       "Bash(npx wrangler secret put:*)",
       "Bash(git checkout -b feature/binary-ble-upload)"
+      "Bash(openssl rand:*)",
+      "Bash(xargs grep:*)",
+      "Bash(git checkout:*)"
     ]
   }
 }

@@ -10,7 +10,8 @@ import {
   isCurrentlyRecording, getCurrentFilename, destroyRecorder,
 } from "./audioController.js";
 
-const { width, height } = getDeviceInfo();
+const { width, height, screenShape } = getDeviceInfo();
+const isRound = screenShape === 1;
 
 let countdownWidget = null;
 let buttonWidget = null;
@@ -43,6 +44,7 @@ function showRecordingButtons() {
 }
 
 let pageRequest = null;
+let _isSyncing = false;
 
 function doStartRecording() {
   showRecordingButtons();
@@ -61,18 +63,35 @@ function doStartRecording() {
       }
     },
     onStopped(filename) {
+      _isSyncing = true;
       if (buttonWidget) {
-        buttonWidget.setProperty(prop.TEXT, "NEW");
+        buttonWidget.setProperty(prop.TEXT, "SYNC");
+        buttonWidget.setProperty(prop.normal_color, 0x888888);
+      }
+      if (playButtonWidget) {
+        playButtonWidget.setProperty(prop.normal_color, 0x888888);
+      }
+      if (listButtonWidget) {
+        listButtonWidget.setProperty(prop.normal_color, 0x888888);
       }
       showIdleButtons(true);
 
-      // Auto-sync the recorded file
-      const justFileName = filename.replace("data://dudus/", "");
-      syncSingleFile(justFileName, pageRequest, (msg) => {
+      syncSingleFile(filename, pageRequest, (msg) => {
         if (countdownWidget) {
           countdownWidget.setProperty(prop.TEXT, msg);
         }
       }, (msg) => {
+        _isSyncing = false;
+        if (buttonWidget) {
+          buttonWidget.setProperty(prop.TEXT, "NEW");
+          buttonWidget.setProperty(prop.normal_color, 0xfc6950);
+        }
+        if (playButtonWidget) {
+          playButtonWidget.setProperty(prop.normal_color, 0x2196f3);
+        }
+        if (listButtonWidget) {
+          listButtonWidget.setProperty(prop.normal_color, 0x444444);
+        }
         // File was deleted after successful upload + transfer — hide play button
         if (msg === "Synced!" && playButtonWidget) {
           playButtonWidget.setProperty(prop.VISIBLE, false);
@@ -135,7 +154,8 @@ function doCancelRecording() {
 
 const btnSize = Math.floor(width * 0.3);
 const btnGap = Math.floor(width * 0.05);
-const btnY = Math.floor(height / 2);
+// On round screens shift the cluster up to keep the LIST button away from the circle edge
+const btnY = Math.floor(isRound ? height * 0.44 : height * 0.5);
 
 // Two buttons side by side: NEW (left) and PLAY (right)
 const leftBtnX = Math.floor(width / 2 - btnSize - btnGap / 2);
@@ -150,7 +170,7 @@ Page(BasePage({
     // Countdown text - top half of screen
     countdownWidget = createWidget(widget.TEXT, {
       x: 0,
-      y: Math.floor(height * 0.15),
+      y: Math.floor(isRound ? height * 0.2 : height * 0.15),
       w: width,
       h: Math.floor(height * 0.3),
       text: getRecordDuration().toString(),
@@ -173,6 +193,7 @@ Page(BasePage({
       text_size: 22,
       color: 0xffffff,
       click_func: () => {
+        if (_isSyncing) return;
         if (isCurrentlyRecording()) {
           stopRecording();
         } else {
@@ -195,6 +216,7 @@ Page(BasePage({
       text_size: 22,
       color: 0xffffff,
       click_func: () => {
+        if (_isSyncing) return;
         doTogglePlayback();
       },
     });
@@ -235,6 +257,7 @@ Page(BasePage({
       text_size: 18,
       color: 0xffffff,
       click_func: () => {
+        if (_isSyncing) return;
         stopAudio();
         push({ url: "page/gt/home/audiolist.page" });
       },

@@ -8,14 +8,17 @@ import {
   playAudio, stopAudio, isAudioPlaying, destroyPlayer,
 } from "./audioController.js";
 
-const { width, height } = getDeviceInfo();
+const { width, height, screenShape } = getDeviceInfo();
+const isRound = screenShape === 1;
 
 const ROW_HEIGHT = 60;
-const BTN_W = 50;
 const PADDING = 10;
-const START_Y = 60;
-
-
+// On round screens pull list items inward so they stay within the circle
+const listX = isRound ? Math.floor(width * 0.12) : PADDING;
+const listW = width - listX * 2;
+const BTN_W = Math.floor(listW * 0.14);
+const textW = listW - BTN_W * 2 - PADDING;
+const START_Y = isRound ? 75 : 60;
 
 let activePlayBtn = null;
 let statusWidget = null;
@@ -32,7 +35,6 @@ function playFile(filePath, playBtn) {
   if (isAudioPlaying()) {
     const wasPlaying = activePlayBtn;
     stopPlayerUI();
-    // If same button tapped again, just stop
     if (wasPlaying === playBtn) return;
   }
 
@@ -74,10 +76,18 @@ Page(BasePage({
       align_h: align.CENTER_H,
     });
 
-    // Status text for upload feedback
+    // Bottom buttons: BACK and SYNC side by side
+    const bottomBtnW = Math.floor(width * (isRound ? 0.28 : 0.35));
+    const bottomBtnH = 40;
+    const bottomBtnY = isRound ? height - 86 : height - 60;
+    const bottomGap = Math.floor(width * 0.04);
+    const bottomLeftX = Math.floor(width / 2 - bottomBtnW - bottomGap / 2);
+    const bottomRightX = Math.floor(width / 2 + bottomGap / 2);
+
+    // Status text above bottom buttons
     statusWidget = createWidget(widget.TEXT, {
       x: 0,
-      y: height - 100,
+      y: bottomBtnY - 36,
       w: width,
       h: 30,
       text: "",
@@ -85,14 +95,6 @@ Page(BasePage({
       color: 0xaaaaaa,
       align_h: align.CENTER_H,
     });
-
-    // Bottom buttons: BACK and SYNC side by side
-    const bottomBtnW = Math.floor(width * 0.35);
-    const bottomBtnH = 40;
-    const bottomBtnY = height - 60;
-    const bottomGap = Math.floor(width * 0.04);
-    const bottomLeftX = Math.floor(width / 2 - bottomBtnW - bottomGap / 2);
-    const bottomRightX = Math.floor(width / 2 + bottomGap / 2);
 
     createWidget(widget.BUTTON, {
       x: bottomLeftX,
@@ -147,16 +149,13 @@ Page(BasePage({
       return;
     }
 
-    const textW = width - BTN_W * 2 - PADDING * 3;
-
     for (let i = 0; i < files.length; i++) {
       const fileName = files[i];
       const y = START_Y + i * (ROW_HEIGHT + PADDING);
 
-      // Filename label - strip extension for display
       const displayName = fileName.replace('.opus', '');
       createWidget(widget.TEXT, {
-        x: PADDING,
+        x: listX,
         y: y,
         w: textW,
         h: ROW_HEIGHT,
@@ -166,9 +165,8 @@ Page(BasePage({
         align_v: align.CENTER_V,
       });
 
-      // Play button
       const playBtn = createWidget(widget.BUTTON, {
-        x: PADDING + textW,
+        x: listX + textW,
         y: y,
         w: BTN_W,
         h: ROW_HEIGHT,
@@ -183,9 +181,8 @@ Page(BasePage({
         },
       });
 
-      // Delete button
       createWidget(widget.BUTTON, {
-        x: PADDING + textW + BTN_W,
+        x: listX + textW + BTN_W,
         y: y,
         w: BTN_W,
         h: ROW_HEIGHT,
