@@ -1,8 +1,7 @@
 import { create, id, codec } from '@zos/media';
 import { writeFileSync } from '@zos/fs';
 import { setTimeout, clearTimeout } from '@zos/timer';
-
-const DEBUG = false;
+import { SIMULATOR_MODE } from './config.js';
 
 // Minimal valid Opus silence frame (mono, 16kHz, 20ms)
 // TOC byte 0xF8 = config 31 (Hybrid, 20ms), mono, 0 frames code => silence
@@ -14,7 +13,7 @@ function createFakeRecorder() {
   let targetFile = null;
 
   return {
-    setFormat(codecType, options) {
+    setFormat(_codecType, options) {
       targetFile = options.target_file;
       console.log("[fakeRecorder] setFormat, target:", targetFile);
     },
@@ -63,7 +62,7 @@ function createFakePlayer() {
     addEventListener(event, cb) {
       listeners[event] = cb;
     },
-    setSource(sourceType, options) {
+    setSource(_sourceType, options) {
       console.log("[fakePlayer] setSource:", options.file);
     },
     prepare() {
@@ -90,16 +89,16 @@ function createFakePlayer() {
 }
 
 export function createRecorder() {
-  if (DEBUG) {
-    console.log("[recorderFacade] Using FAKE recorder (DEBUG mode)");
+  if (SIMULATOR_MODE) {
+    console.log("[recorderFacade] Using FAKE recorder (SIMULATOR_MODE mode)");
     return createFakeRecorder();
   }
   return create(id.RECORDER);
 }
 
 export function createPlayer() {
-  if (DEBUG) {
-    console.log("[recorderFacade] Using FAKE player (DEBUG mode)");
+  if (SIMULATOR_MODE) {
+    console.log("[recorderFacade] Using FAKE player (SIMULATOR_MODE mode)");
     return createFakePlayer();
   }
   return create(id.PLAYER);

@@ -9,36 +9,68 @@ AppSideService(
 
     onRequest(req, res) {
       if (req.method === "get.settings") {
-        const url         = settingsLib.getItem("dudu_upload_url") || "";
-        const apiKey      = settingsLib.getItem("dudu_api_key") || "";
-        const duration    = parseInt(settingsLib.getItem("dudu_duration")) || 30;
-        const todoistKey  = settingsLib.getItem("dudu_todoist_key") || "";
-        const language    = settingsLib.getItem("dudu_language") || "it";
-        console.log("[side] get.settings -> url:", url, "apiKey:", apiKey ? "(set)" : "(empty)", "duration:", duration, "lang:", language, "todoist:", todoistKey ? "(set)" : "(empty)");
-        res(null, { url, apiKey, duration, todoistKey, language });
-      }
-    },
+        const duration = parseInt(settingsLib.getItem("dudu_duration")) || 30;
+        console.log("[side] get.settings -> duration:", duration);
+        res(null, { duration });
 
-    onReceivedFile(fileObject) {
-      console.log("[side] File received:", JSON.stringify(fileObject));
+      } else if (req.method === "check.connection") {
+        const url = settingsLib.getItem("dudu_upload_url") || "";
+        if (!url) {
+          console.log("[side] check.connection -> no URL configured");
+          res(null, { connected: false });
+          return;
+        }
+        fetch(url)
+          .then(() => {
+            console.log("[side] check.connection -> OK");
+            res(null, { connected: true });
+          })
+          .catch(() => {
+            console.log("[side] check.connection -> failed");
+            res(null, { connected: false });
+          });
 
-      const fileName = fileObject.params?.fileName || fileObject.fileName || "unknown";
-      const filePath = fileObject.filePath || "";
+      } else if (req.method === "upload.file") {
+        const { fileName, base64 } = req.params;
+        const url        = settingsLib.getItem("dudu_upload_url") || "";
+        const apiKey     = settingsLib.getItem("dudu_api_key") || "";
+        const language   = settingsLib.getItem("dudu_language") || "en";
+        const todoistKey = settingsLib.getItem("dudu_todoist_key") || "";
 
-      console.log("[side] fileName:", fileName, "filePath:", filePath);
+        if (!url) {
+          console.log("[side] upload.file -> no URL configured");
+          res("no upload URL configured");
+          return;
+        }
 
-      try {
-        const stored = settingsLib.getItem("dudu_files") || "[]";
-        const list = JSON.parse(stored);
-        list.push({
-          fileName: fileName,
-          filePath: filePath,
-          receivedAt: Date.now(),
-        });
-        settingsLib.setItem("dudu_files", JSON.stringify(list));
-        console.log("[side] Metadata saved. Total files:", list.length);
-      } catch (e) {
-        console.log("[side] settingsLib error:", e);
+        const headers = { "Content-Type": "application/json" };
+        if (apiKey) headers["Authorization"] = "Bearer " + apiKey;
+
+        const body = { fileName, data: base64, language };
+        if (apiKey)     body.apiKey        = apiKey;
+        if (todoistKey) body.todoistApiKey = todoistKey;
+
+        console.log("[side] upload.file ->", fileName, "to", url);
+        fetch(url, { method: "POST", headers, body: JSON.stringify(body) })
+          .then(() => {
+            console.log("[side] upload.file OK:", fileName);
+            try {
+              const stored = settingsLib.getItem("dudu_files") || "[]";
+              const list = JSON.parse(stored);
+              const idx = list.findIndex((f) => f.fileName === fileName);
+              const entry = { fileName, uploadedAt: Date.now() };
+              if (idx >= 0) list[idx] = entry; else list.push(entry);
+              settingsLib.setItem("dudu_files", JSON.stringify(list));
+              settingsLib.setItem("dudu_data_" + fileName, base64);
+            } catch (e) {
+              console.log("[side] settingsLib save error:", e);
+            }
+            res(null, { ok: true });
+          })
+          .catch((e) => {
+            console.log("[side] upload.file error:", fileName, e);
+            res(e && e.message ? e.message : "upload failed");
+          });
       }
     },
 

@@ -14,3 +14,5 @@ selenium-debug.log
 *.ntvs*
 *.njsproj
 *.sln
+cloudfare_worker/node_modules/**
+dummy_server/__pycache__

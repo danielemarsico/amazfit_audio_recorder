@@ -1,0 +1,5 @@
+SHORT DESCRIPTION (40 chars)
+Record voice memos from your wrist.
+
+FULL DESCRIPTION (600 chars)
+DuDu is a voice memo recorder for Amazfit smartwatches. Speak your thoughts directly from your wrist — DuDu captures the audio and instantly transcribes it using AI. Each recording is automatically sent to your phone, converted to text, and optionally added as a task in your Todoist inbox with today's due date. Supports Italian and English transcription. Configure your upload endpoint, API keys, and recording duration from the companion app settings. Perfect for capturing quick ideas, reminders, and notes on the go — no phone needed to record.
