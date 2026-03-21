@@ -2,7 +2,7 @@
 import { UPLOADURL, APIKEY, TODOIST_KEY } from '../secrets.js';
 
 // Keep in sync with zepp_app/config.js
-const SIMULATOR_MODE = true;
+const SIMULATOR_MODE = false;
 
 const FAKE_FILES = [
   { fileName: "record_20260314_091500.opus", uploadedAt: "2026-03-14T09:15:00Z" },

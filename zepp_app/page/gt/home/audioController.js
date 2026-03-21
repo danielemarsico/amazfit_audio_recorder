@@ -1,7 +1,6 @@
 import { readdirSync, rmSync, mkdirSync, readFileSync } from '@zos/fs';
 import { createRecorder, createPlayer, codec } from './recorderFacade.js';
 import { setInterval, clearInterval } from '@zos/timer';
-import { SIMULATOR_MODE } from './config.js';
 
 const AUDIO_FOLDER = 'dudus';
 export const FOLDER_PATH = `data://${AUDIO_FOLDER}/`;
@@ -57,11 +56,7 @@ export function generateFilename() {
   return FOLDER_PATH + `record_${year}${month}${day}_${hours}${minutes}${seconds}.opus`;
 }
 
-/**
- * Pack fileName + raw audio bytes into a single binary buffer for BLE transfer.
- * Format: [4 bytes LE: meta JSON length][meta JSON bytes][raw audio bytes]
- * The side service unpacks this, base64-encodes the audio, and POSTs to the worker.
- */
+
 function makeAudioPayload(fileName, audioBuffer) {
   const meta = JSON.stringify({ fileName });
   const metaLen = meta.length;
@@ -74,7 +69,6 @@ function makeAudioPayload(fileName, audioBuffer) {
   payload.set(new Uint8Array(audioBuffer), 4 + metaLen);
   return payload.buffer;
 }
-
 
 export function syncAllFiles(requestFn, statusCallback, doneCallback) {
   const files = listAudioFiles();
@@ -129,34 +123,33 @@ export function syncSingleFile(fileName, requestFn, statusCallback, doneCallback
     return;
   }
 
+  let data;
   try {
-    const data = readFileSync({ path: AUDIO_FOLDER + "/" + fileName });
-    if (!data) {
-      console.log("[sync] readFileSync returned null:", fileName);
-      finish("SYNC ERROR!");
-      return;
-    }
-
-    console.log("[sync] Read", fileName, "size:", data.byteLength);
-    const base64 = arrayBufferToBase64(data);
-
-    requestFn({
-      method: "upload.file",
-      params: { fileName, base64 },
-    })
-      .then(function (res) {
-        console.log("[sync] Upload OK:", fileName, JSON.stringify(res));
-        deleteAudioFile(fileName);
-        finish("Synced!");
-      })
-      .catch(function (e) {
-        console.log("[sync] Upload error:", fileName, JSON.stringify(e));
-        finish("SYNC ERROR!");
-      });
+    data = readFileSync({ path: AUDIO_FOLDER + "/" + fileName });
   } catch (e) {
     console.log("[sync] File read error:", fileName, e);
     finish("SYNC ERROR!");
+    return;
   }
+
+  console.log("[sync] Sending binary payload for:", fileName, "size:", data.byteLength);
+  const payload = makeAudioPayload(fileName, data);
+
+  requestFn(Buffer.from(payload))
+    .then(function (res) {
+      if (!res || res.ok === false) {
+        console.log("[sync] Upload failed:", fileName, res && res.error);
+        finish("SYNC ERROR!");
+        return;
+      }
+      console.log("[sync] Upload OK:", fileName);
+      deleteAudioFile(fileName);
+      finish("Synced!");
+    })
+    .catch(function (e) {
+      console.log("[sync] Upload error:", fileName, JSON.stringify(e));
+      finish("SYNC ERROR!");
+    });
 }
 
 export function listAudioFiles() {
