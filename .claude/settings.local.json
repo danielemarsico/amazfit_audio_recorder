@@ -18,7 +18,8 @@
       "Bash(where:*)",
       "Bash(git tag:*)",
       "Bash(npm run deploy:*)",
-      "Bash(npx wrangler secret put:*)"
+      "Bash(npx wrangler secret put:*)",
+      "Bash(git checkout -b feature/binary-ble-upload)"
     ]
   }
 }
