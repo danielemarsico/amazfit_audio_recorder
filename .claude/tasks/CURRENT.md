@@ -40,10 +40,10 @@ Replace the manual Todoist API key entry with a proper OAuth flow using the Zepp
 
 ---
 
-# Task: review debug and utils
+# Task: review debug and utils — COMPLETED
 
-- [ ] Update README.md withthe instruction on how to submit a file to the worker and manage TODOIST api key  in the command line
-- [ ] Update CLAUDE.md with the result of the analysys of what files are being included in the zab archive inside the .bin file and which are kept outside
+- [x] Update README.md with the instruction on how to submit a file to the worker and manage TODOIST api key in the command line
+- [x] Update CLAUDE.md with the result of the analysis of what files are being included in the zab archive inside the .bin file and which are kept outside
 
 # Task: v1.0.1 Submission
 

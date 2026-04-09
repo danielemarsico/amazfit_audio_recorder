@@ -210,6 +210,8 @@ Health check — returns a plain-text confirmation that the worker is running.
 
 ### Test the worker from the command line
 
+`scripts/test_debug_ogg.py` requires only Python's standard library.
+
 ```bash
 # Test Ogg conversion only (downloads converted.ogg)
 python scripts/test_debug_ogg.py <path-to-opus> \
@@ -221,11 +223,24 @@ python scripts/test_debug_ogg.py <path-to-opus> \
   --url https://dudu-transcription.<your-subdomain>.workers.dev \
   --api-key <API_KEY> --upload --lang it
 
-# Transcribe and create a Todoist task (pass an OAuth token or personal API token)
+# Transcribe and create a Todoist task
 python scripts/test_debug_ogg.py <path-to-opus> \
   --url https://dudu-transcription.<your-subdomain>.workers.dev \
-  --api-key <API_KEY> --upload --lang it --todoist-key <TODOIST_OAUTH_TOKEN>
+  --api-key <API_KEY> --upload --lang it --todoist-key <TOKEN>
 ```
+
+**Getting a token for `--todoist-key` in CLI tests:**
+
+The worker accepts any valid Todoist bearer token — it does not distinguish between OAuth access tokens and personal API tokens. For command-line testing you have two options:
+
+- **Personal API token** (simplest): go to [Todoist Settings → Integrations → Developer](https://app.todoist.com/app/settings/integrations/developer), copy the API token shown there, and pass it as `--todoist-key`.
+- **OAuth access token**: complete the OAuth flow in the Zepp app at least once, then retrieve the stored value with:
+  ```bash
+  # The token is saved in the companion app's settings storage under the key dudu_todoist_key.
+  # There is no CLI to read it directly; use the personal API token above for testing.
+  ```
+
+Both token types work identically with the worker.
 
 ### Local worker dev server
 
