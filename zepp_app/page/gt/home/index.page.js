@@ -163,8 +163,8 @@ const rightBtnX = Math.floor(width / 2 + btnGap / 2);
 
 Page(BasePage({
   build() {
-    setPageBrightTime({ brightTime: 600000 });
-    pauseDropWristScreenOff({ duration: 600000 });
+    try { setPageBrightTime({ brightTime: 600000 }); } catch (e) {}
+    try { pauseDropWristScreenOff({ duration: 600000 }); } catch (e) {}
 
     pageRequest = this.request.bind(this);
     // Countdown text - top half of screen

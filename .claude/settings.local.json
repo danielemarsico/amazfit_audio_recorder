@@ -19,10 +19,15 @@
       "Bash(git tag:*)",
       "Bash(npm run deploy:*)",
       "Bash(npx wrangler secret put:*)",
-      "Bash(git checkout -b feature/binary-ble-upload)"
+      "Bash(git checkout -b feature/binary-ble-upload)",
       "Bash(openssl rand:*)",
       "Bash(xargs grep:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Read(//c/Users/diaez/AppData/Roaming/npm/node_modules/**)",
+      "WebFetch(domain:docs-testing.zepp.com)",
+      "WebFetch(domain:community.fitbit.com)",
+      "Read(//tmp/**)",
+      "Read(//c/Users/diaez/AppData/Local/Temp/**)"
     ]
   }
 }

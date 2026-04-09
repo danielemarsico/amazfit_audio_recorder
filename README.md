@@ -28,7 +28,7 @@ zepp_app/
   secrets.js                  Local secrets (gitignored) — copy from secrets.template.js
   secrets.template.js         Template for secrets.js
   setting/index.js            Companion app settings page (URL, API key, language,
-                              Todoist key, recording duration)
+                              Todoist OAuth connect, recording duration)
   page/gt/home/
     index.page.js             Main recording page
     audiolist.page.js         Recordings list (play, sync, delete)
@@ -84,6 +84,23 @@ cp zepp_app/secrets.template.js zepp_app/secrets.js
 
 `secrets.js` is gitignored and will never be committed.
 
+The required fields are:
+
+| Field | Description |
+|---|---|
+| `UPLOADURL` | Your Cloudflare Worker URL (set in step 4) |
+| `APIKEY` | The API key you set on the worker (or leave blank) |
+| `DEFAULT_LANG` | Default transcription language, e.g. `"en"` or `"it"` |
+| `TODOIST_CLIENT_ID` | OAuth client ID from your Todoist app registration |
+| `TODOIST_CLIENT_SECRET` | OAuth client secret from your Todoist app registration |
+
+**Todoist OAuth setup:**
+
+1. Go to [Todoist App Management](https://app.todoist.com/app/settings/integrations/app-management) and create a new app.
+2. Set the redirect URI to exactly: `https://zepp-os.zepp.com/app-settings/redirect.html`
+3. Copy the **Client ID** and **Client Secret** into `secrets.js`.
+4. After building and installing the app, tap **Connect Todoist** in the watch app settings — it will open a browser OAuth flow and store the token automatically.
+
 ### 3. Install watch app dependencies
 
 ```bash
@@ -126,7 +143,7 @@ Open the **Zepp phone app → My Devices → your watch → DuDu → Settings**:
 |---|---|
 | Upload URL | `https://dudu-transcription.<your-subdomain>.workers.dev/upload` |
 | API Key | the key you set in step 4 (or leave blank to skip auth) |
-| Todoist Key | *(optional)* your Todoist API token — creates a task from each transcription |
+| Todoist | *(optional)* tap **Connect Todoist** — completes an OAuth flow and stores the token; once connected, a Todoist task is created from each transcription |
 | Language | transcription language hint sent to Whisper (default: English) |
 | Duration | recording length in seconds, 5–60 (default 30) |
 
@@ -154,7 +171,7 @@ Transcribes audio and optionally creates a Todoist task.
 | `fileName` | string | no | Original file name, echoed in response |
 | `apiKey` | string | no | API key (alternative to `Authorization` header) |
 | `language` | string | no | BCP-47 language code for Whisper, e.g. `"en"`, `"it"`. Defaults to `"en"` |
-| `todoistApiKey` | string | no | Todoist API token — if provided, a task is created from the transcription |
+| `todoistApiKey` | string | no | Todoist OAuth access token — if provided, a task is created from the transcription. The app obtains this automatically via OAuth; you can also pass a personal API token here for testing. |
 
 **Authorization header (alternative to `apiKey` in body):**
 ```
@@ -204,10 +221,10 @@ python scripts/test_debug_ogg.py <path-to-opus> \
   --url https://dudu-transcription.<your-subdomain>.workers.dev \
   --api-key <API_KEY> --upload --lang it
 
-# Transcribe and create a Todoist task
+# Transcribe and create a Todoist task (pass an OAuth token or personal API token)
 python scripts/test_debug_ogg.py <path-to-opus> \
   --url https://dudu-transcription.<your-subdomain>.workers.dev \
-  --api-key <API_KEY> --upload --lang it --todoist-key <TODOIST_KEY>
+  --api-key <API_KEY> --upload --lang it --todoist-key <TODOIST_OAUTH_TOKEN>
 ```
 
 ### Local worker dev server
@@ -251,7 +268,7 @@ cd zepp_app && zeus build
 
 - `secrets.js` is gitignored — never commit it
 - Set `API_KEY` via `wrangler secret put` to protect your worker endpoint
-- Your Todoist API key is transmitted at runtime over HTTPS and never stored server-side
+- Todoist integration uses OAuth — no API key is ever typed or stored in plain text; the OAuth access token is saved in the Zepp companion app's secure settings storage and transmitted to the worker over HTTPS
 - The worker never saves audio to disk — all processing is in-memory
 
 ---

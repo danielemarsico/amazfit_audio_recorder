@@ -57,8 +57,8 @@ function playFile(filePath, playBtn) {
 
 Page(BasePage({
   build() {
-    setPageBrightTime({ brightTime: 600000 });
-    pauseDropWristScreenOff({ duration: 600000 });
+    try { setPageBrightTime({ brightTime: 600000 }); } catch (e) {}
+    try { pauseDropWristScreenOff({ duration: 600000 }); } catch (e) {}
 
     const files = listAudioFiles();
     const pageRequest = this.request.bind(this);
