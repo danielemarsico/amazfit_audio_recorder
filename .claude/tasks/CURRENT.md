@@ -47,5 +47,5 @@ Replace the manual Todoist API key entry with a proper OAuth flow using the Zepp
 
 # Task: v1.0.1 Submission
 
-- [ ] Perform user testing on physical device (GTR / GTS / Bip6) - manual
-- [ ] Submit v1.0.1 to the Zepp app store
+- [X] Perform user testing on physical device (GTR / GTS / Bip6) - manual
+- [X] Submit v1.0.1 to the Zepp app store

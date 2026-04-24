@@ -27,7 +27,10 @@
       "WebFetch(domain:docs-testing.zepp.com)",
       "WebFetch(domain:community.fitbit.com)",
       "Read(//tmp/**)",
-      "Read(//c/Users/diaez/AppData/Local/Temp/**)"
+      "Read(//c/Users/diaez/AppData/Local/Temp/**)",
+      "Bash(zeus build *)",
+      "Bash(npm list *)",
+      "Bash(npx zeus *)"
     ]
   }
 }
