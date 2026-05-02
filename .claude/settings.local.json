@@ -30,7 +30,9 @@
       "Read(//c/Users/diaez/AppData/Local/Temp/**)",
       "Bash(zeus build *)",
       "Bash(npm list *)",
-      "Bash(npx zeus *)"
+      "Bash(npx zeus *)",
+      "Bash(zeus --version)",
+      "WebFetch(domain:api.github.com)"
     ]
   }
 }

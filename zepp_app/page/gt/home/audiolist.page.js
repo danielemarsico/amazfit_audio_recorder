@@ -60,6 +60,21 @@ Page(BasePage({
     try { setPageBrightTime({ brightTime: 600000 }); } catch (e) {}
     try { pauseDropWristScreenOff({ duration: 600000 }); } catch (e) {}
 
+    // Status widget created first so it can display errors from any later failure
+    const bottomBtnY = isRound ? height - 86 : height - 60;
+    statusWidget = createWidget(widget.TEXT, {
+      x: 0,
+      y: bottomBtnY - 36,
+      w: width,
+      h: 30,
+      text: "",
+      text_size: 16,
+      color: 0xaaaaaa,
+      align_h: align.CENTER_H,
+    });
+
+    try {
+
     const files = listAudioFiles();
     const pageRequest = this.request.bind(this);
     fetchSettings(pageRequest);
@@ -79,22 +94,9 @@ Page(BasePage({
     // Bottom buttons: BACK and SYNC side by side
     const bottomBtnW = Math.floor(width * (isRound ? 0.28 : 0.35));
     const bottomBtnH = 40;
-    const bottomBtnY = isRound ? height - 86 : height - 60;
     const bottomGap = Math.floor(width * 0.04);
     const bottomLeftX = Math.floor(width / 2 - bottomBtnW - bottomGap / 2);
     const bottomRightX = Math.floor(width / 2 + bottomGap / 2);
-
-    // Status text above bottom buttons
-    statusWidget = createWidget(widget.TEXT, {
-      x: 0,
-      y: bottomBtnY - 36,
-      w: width,
-      h: 30,
-      text: "",
-      text_size: 16,
-      color: 0xaaaaaa,
-      align_h: align.CENTER_H,
-    });
 
     createWidget(widget.BUTTON, {
       x: bottomLeftX,
@@ -198,6 +200,15 @@ Page(BasePage({
           replace({ url: "page/gt/home/audiolist.page" });
         },
       });
+    }
+  },
+
+    } catch (e) {
+      const errStr = String(e);
+      console.log("[audiolist] build() error: " + errStr);
+      if (statusWidget) {
+        statusWidget.setProperty(prop.TEXT, "ERR: " + errStr.substring(0, 40));
+      }
     }
   },
 

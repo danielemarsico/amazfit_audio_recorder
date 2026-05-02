@@ -152,6 +152,32 @@ function doCancelRecording() {
   });
 }
 
+function doStartRecordingWithRetry(attemptsLeft) {
+  try {
+    doStartRecording();
+  } catch (e) {
+    const errStr = String(e);
+    const attempt = 4 - attemptsLeft;
+    console.log("[startup] recorder init failed attempt " + attempt + "/3: " + errStr);
+    if (attemptsLeft > 0) {
+      if (countdownWidget) {
+        countdownWidget.setProperty(prop.TEXT, "Retry " + attempt + "/3");
+      }
+      setTimeout(() => doStartRecordingWithRetry(attemptsLeft - 1), 1000);
+    } else {
+      console.log("[startup] all retries exhausted, giving up");
+      if (countdownWidget) {
+        countdownWidget.setProperty(prop.TEXT, "START FAILED");
+      }
+      if (buttonWidget) {
+        buttonWidget.setProperty(prop.TEXT, "NEW");
+        buttonWidget.setProperty(prop.normal_color, 0xfc6950);
+      }
+      showIdleButtons(false);
+    }
+  }
+}
+
 const btnSize = Math.floor(width * 0.3);
 const btnGap = Math.floor(width * 0.05);
 // On round screens shift the cluster up to keep the LIST button away from the circle edge
@@ -167,18 +193,20 @@ Page(BasePage({
     try { pauseDropWristScreenOff({ duration: 600000 }); } catch (e) {}
 
     pageRequest = this.request.bind(this);
-    // Countdown text - top half of screen
+    // Countdown text - top half of screen (also used for error display)
     countdownWidget = createWidget(widget.TEXT, {
       x: 0,
       y: Math.floor(isRound ? height * 0.2 : height * 0.15),
       w: width,
       h: Math.floor(height * 0.3),
-      text: getRecordDuration().toString(),
-      text_size: 72,
-      color: 0xffffff,
+      text: "Starting...",
+      text_size: 48,
+      color: 0xaaaaaa,
       align_h: align.CENTER_H,
       align_v: align.CENTER_V,
     });
+
+    try {
 
     // Main button (STOP during recording, NEW after)
     buttonWidget = createWidget(widget.BUTTON, {
@@ -264,13 +292,21 @@ Page(BasePage({
     });
     listButtonWidget.setProperty(prop.VISIBLE, false);
 
-    // Fetch settings, then start first recording
+    // Fetch settings, then start first recording (500ms initial delay + up to 3 retries × 1s)
     fetchSettings(pageRequest, () => {
       if (countdownWidget) {
         countdownWidget.setProperty(prop.TEXT, getRecordDuration().toString());
       }
-      doStartRecording();
+      setTimeout(() => doStartRecordingWithRetry(3), 500);
     });
+
+    } catch (e) {
+      const errStr = String(e);
+      console.log("[startup] build() init error: " + errStr);
+      if (countdownWidget) {
+        countdownWidget.setProperty(prop.TEXT, "INIT ERR: " + errStr.substring(0, 40));
+      }
+    }
   },
 
   onDestroy() {

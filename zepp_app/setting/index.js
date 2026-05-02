@@ -96,7 +96,9 @@ AppSettingsPage({
       ]
     );
 
-    // --- Todoist OAuth section ---
+    // --- Todoist section (OAuth + API key fallback) ---
+    const todoistKey = props.settingsStorage.getItem("dudu_todoist_key") || "";
+    const isConnected = !!todoistKey;
     const todoistKeyConfig = Section(
       {
         style: {
@@ -135,19 +137,61 @@ AppSettingsPage({
         Text(
           {
             paragraph: true,
-            style: { color: "#aaaaaa", fontSize: "12px", marginBottom: "8px" },
+            style: {
+              color: isConnected ? "#66cc66" : "#aaaaaa",
+              fontSize: "12px",
+              marginBottom: "8px",
+            },
           },
-          "Authorise DuDu to create tasks from your recordings"
+          isConnected ? "Status: Connected" : "Status: Not configured"
         ),
-        Auth({
-          label: "Connect Todoist",
-          authorizeUrl: "https://app.todoist.com/oauth/authorize",
-          requestTokenUrl: "https://api.todoist.com/oauth/access_token",
-          clientId: _CLIENT_ID,
-          clientSecret: _CLIENT_SECRET,
-          scope: "task:add",
-          onAccessToken({ access_token }) {
-            props.settingsStorage.setItem("dudu_todoist_key", access_token);
+        Text(
+          {
+            bold: true,
+            paragraph: true,
+            style: { color: "#cccccc", fontSize: "12px", marginTop: "8px", marginBottom: "4px" },
+          },
+          "Option 1 — OAuth"
+        ),
+        _CLIENT_ID
+          ? Auth({
+              label: "Connect Todoist",
+              authorizeUrl: "https://app.todoist.com/oauth/authorize",
+              requestTokenUrl: "https://api.todoist.com/oauth/access_token",
+              clientId: _CLIENT_ID,
+              clientSecret: _CLIENT_SECRET,
+              scope: "task:add",
+              onAccessToken({ access_token }) {
+                props.settingsStorage.setItem("dudu_todoist_key", access_token);
+              },
+            })
+          : Text(
+              {
+                paragraph: true,
+                style: { color: "#ff6666", fontSize: "11px" },
+              },
+              "OAuth not configured: add TODOIST_CLIENT_ID to secrets.js and rebuild."
+            ),
+        Text(
+          {
+            bold: true,
+            paragraph: true,
+            style: { color: "#cccccc", fontSize: "12px", marginTop: "12px", marginBottom: "4px" },
+          },
+          "Option 2 — API key"
+        ),
+        Text(
+          {
+            paragraph: true,
+            style: { color: "#888888", fontSize: "11px", marginBottom: "4px" },
+          },
+          "Enter a Todoist personal API token as a fallback."
+        ),
+        TextInput({
+          label: "",
+          value: todoistKey,
+          onChange: (val) => {
+            props.settingsStorage.setItem("dudu_todoist_key", val.trim());
           },
         }),
       ]
