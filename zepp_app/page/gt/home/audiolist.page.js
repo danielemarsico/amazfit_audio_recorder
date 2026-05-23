@@ -201,7 +201,6 @@ Page(BasePage({
         },
       });
     }
-  },
 
     } catch (e) {
       const errStr = String(e);

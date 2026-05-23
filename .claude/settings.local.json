@@ -32,7 +32,8 @@
       "Bash(npm list *)",
       "Bash(npx zeus *)",
       "Bash(zeus --version)",
-      "WebFetch(domain:api.github.com)"
+      "WebFetch(domain:api.github.com)",
+      "Bash(python -c ' *)"
     ]
   }
 }

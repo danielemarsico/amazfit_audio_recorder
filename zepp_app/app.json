@@ -6,7 +6,7 @@
     "appType": "app",
     "version": {
       "code": 3,
-      "name": "1.0.2"
+      "name": "1.0.3"
     },
     "icon": "icon.png",
     "vender": "mrdiaez",
@@ -36,7 +36,10 @@
         "page": {
           "pages": [
             "page/gt/home/index.page",
-            "page/gt/home/audiolist.page"
+            "page/gt/home/audiolist.page",
+            "page/gt/home/audioController.js",
+            "page/gt/home/config.js",
+            "page/gt/home/recorderFacade.js"
           ]
         },
         "app-side": {
