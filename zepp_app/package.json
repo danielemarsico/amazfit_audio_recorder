@@ -1,6 +1,6 @@
 {
   "name": "dudu",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Audio recorder",
   "main": "app.js",
   "scripts": {
@@ -9,9 +9,9 @@
   "author": "daniele marsico",
   "license": "ISC",
   "devDependencies": {
-    "@zeppos/device-types": "^3.0.0"
+    "@zeppos/device-types": "^4.0.0"
   },
   "dependencies": {
-    "@zeppos/zml": "^0.0.38"
+    "@zeppos/zml": "^0.0.43"
   }
 }

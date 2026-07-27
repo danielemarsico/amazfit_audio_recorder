@@ -227,7 +227,7 @@ AppSettingsPage({
             { name: "Italian", value: "it" },
             { name: "English", value: "en" },
           ],
-          defaultValue: currentLanguage,
+          value: currentLanguage,
           onChange: (val) => {
             props.settingsStorage.setItem("dudu_language", val);
           },

@@ -59,7 +59,7 @@ scripts/
 ## Prerequisites
 
 - **Node.js >= 18** — https://nodejs.org
-- **Zeus CLI** — `npm install -g @zepp-os/zeus`
+- **Zeus CLI** — `npm install -g @zeppos/zeus-cli`
 - **Zepp app** on your phone with developer mode enabled
 - **Cloudflare account** (free tier is sufficient) — https://cloudflare.com
 - **ZeppOS 3.0 watch** (see supported watches above)
