@@ -36,14 +36,6 @@ zepp_app/
     recorderFacade.js         Recorder/player abstraction
   assets/                     Icons per screen shape (round/square/bip)
 
-cloudfare_worker/
-  worker.js                   Cloudflare Worker: receives upload, converts
-                              ZeppOS Opus → Ogg-Opus in memory, transcribes
-                              with Cloudflare Workers AI (@cf/openai/whisper),
-                              optionally creates a Todoist task
-  wrangler.toml               Worker config (name, AI binding)
-  package.json                Dev dependencies (wrangler)
-
 dummy_server/
   server.py                   Local Python server for testing uploads without
                               the Cloudflare Worker (saves files to disk)
@@ -111,8 +103,14 @@ cd ..
 
 ### 4. Deploy the Cloudflare Worker
 
+The worker lives in its own repository —
+[**danielemarsico/dudu-worker**](https://github.com/danielemarsico/dudu-worker)
+— because the T-Embed assistant (`tembed_assistant`) uses it too. Clone it
+alongside this repo:
+
 ```bash
-cd cloudfare_worker
+git clone https://github.com/danielemarsico/dudu-worker.git
+cd dudu-worker
 npm install
 
 # Log in to Cloudflare (opens a browser)
@@ -159,50 +157,10 @@ zeus build
 
 ## Worker HTTP API
 
-### `POST /upload`
-
-Transcribes audio and optionally creates a Todoist task.
-
-**Request body (JSON):**
-
-| Field | Type | Required | Description |
-|---|---|---|---|
-| `data` | string | yes | Base64-encoded ZeppOS Opus audio |
-| `fileName` | string | no | Original file name, echoed in response |
-| `apiKey` | string | no | API key (alternative to `Authorization` header) |
-| `language` | string | no | BCP-47 language code for Whisper, e.g. `"en"`, `"it"`. Defaults to `"en"` |
-| `todoistApiKey` | string | no | Todoist OAuth access token — if provided, a task is created from the transcription. The app obtains this automatically via OAuth; you can also pass a personal API token here for testing. |
-
-**Authorization header (alternative to `apiKey` in body):**
-```
-Authorization: Bearer <API_KEY>
-```
-
-**Response (JSON):**
-
-| Field | Type | Description |
-|---|---|---|
-| `ok` | bool | `true` on success |
-| `file` | string | echoed `fileName` |
-| `size` | number | raw audio size in bytes |
-| `transcription` | string | transcribed text |
-| `todoistTask` | object\|null | Todoist task object, or `null` if not requested |
-
----
-
-### `POST /debug-ogg`
-
-Same request format as `/upload`, but returns the converted Ogg-Opus file instead of transcribing — useful for verifying audio conversion.
-
-**Response:** `audio/ogg` binary with headers:
-- `X-Frame-Count` — number of Opus frames parsed
-- `X-Ogg-Size` — size of the output Ogg file in bytes
-
----
-
-### `GET /`
-
-Health check — returns a plain-text confirmation that the worker is running.
+The worker is maintained in its own repository:
+[**danielemarsico/dudu-worker**](https://github.com/danielemarsico/dudu-worker).
+Full request/response spec, field tables and error responses live in its
+`API.md` — the routes this app uses are `POST /upload` and `POST /debug-ogg`.
 
 ---
 
@@ -247,8 +205,8 @@ Both token types work identically with the worker.
 Requires a Cloudflare login — the AI binding needs a real connection:
 
 ```bash
-cd cloudfare_worker
-npm run dev   # starts at http://localhost:8787
+cd ../dudu-worker    # separate repo, see step 4
+npm run dev          # starts at http://localhost:8787
 ```
 
 ### Local dummy server (no Cloudflare needed)
@@ -266,9 +224,10 @@ python server.py --port 9000
 
 ## Redeployment
 
-After changes to `worker.js`:
+After changes to the worker (in the separate
+[dudu-worker](https://github.com/danielemarsico/dudu-worker) repo):
 ```bash
-cd cloudfare_worker && npm run deploy
+cd ../dudu-worker && npm test && npm run deploy
 ```
 
 After changes to the watch app:

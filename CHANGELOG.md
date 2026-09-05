@@ -3,6 +3,30 @@
 All notable changes to the DuDu ZeppOS app are tracked here. Dates are in
 YYYY-MM-DD format.
 
+## [Unreleased]
+
+### Changed
+
+- **The Cloudflare Worker moved to its own repository:**
+  [danielemarsico/dudu-worker](https://github.com/danielemarsico/dudu-worker).
+  `cloudfare_worker/` is removed here. The T-Embed assistant
+  (`tembed_assistant`) needs the same worker, and a shared backend shouldn't
+  live inside one of its consumers. **Nothing about this app changes** — the
+  deployed worker keeps its name (`dudu-transcription`) and therefore its
+  URL, so no watch settings need updating, and `/upload` and `/debug-ogg`
+  are behaviourally identical.
+  - The new repo documents the full HTTP contract in its `API.md`
+    (endpoints, fields, and a complete error-response table that was never
+    written down here), and carries an offline test suite (`npm test`)
+    covering both routes.
+  - Also dropped there: the stale `OPENAI_API_KEY` mention in `worker.js`'s
+    header comment (no OpenAI key is used — transcription runs through the
+    Workers AI binding), and the tracked
+    `.wrangler/cache/wrangler-account.json`, which recorded the Cloudflare
+    account id/name and shouldn't have been committed.
+  - `README.md` here now points at the new repo for deployment, the HTTP
+    API, local worker dev, and redeployment.
+
 ## [1.0.4] - 2026-07-27
 
 ### Fixed
