@@ -6,6 +6,21 @@ YYYY-MM-DD format.
 ## [Unreleased]
 
 ### Changed
+- **AI post-processing task moved to the worker repo.** The "improve
+  audio-to-note conversion with AI post-processing" item in `TASKS.md` moved
+  to [dudu-worker](https://github.com/danielemarsico/dudu-worker) with the
+  worker itself — it names `worker.js` functions and needs no `zepp_app/`
+  change, and the T-Embed assistant now needs the same transcript→answer step
+  on its own route, so it belongs where both consumers can see it. `TASKS.md`
+  here keeps a pointer.
+- **Transcription quality improved with no app change.** `/upload` moved
+  server-side from `@cf/openai/whisper` to
+  `@cf/openai/whisper-large-v3-turbo` (2026-09-05). Non-English audio
+  transcribes noticeably better — the same Italian clip went from *"aggiungi
+  latte alla lista della spesa di domani."* to *"Aggiungi il latte alla lista
+  della spesa di domani."* Since the transcript becomes the Todoist task
+  title verbatim, the difference is user-visible. The URL and API key are
+  unchanged, so the watch needs no reconfiguration or re-flash.
 
 - **The Cloudflare Worker moved to its own repository:**
   [danielemarsico/dudu-worker](https://github.com/danielemarsico/dudu-worker).
