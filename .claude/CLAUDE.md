@@ -1,4 +1,4 @@
-# CLAUDE.md — Developer Notes for AI Assistants
+ # CLAUDE.md — Developer Notes for AI Assistants
 
 ## Build System
 
@@ -97,6 +97,19 @@ zeus). Leading hypothesis: `create(id.RECORDER)` in `@zos/media` is called befor
 media/mic subsystem is fully initialised, which takes longer in a cold-installed package than in
 a zeus preview session (where the runtime is already warm).
 
+**Update (v1.0.4) — likely actual root cause found:** `app.json`'s `bip6` target listed
+`audioController.js`, `config.js`, and `recorderFacade.js` in `module.page.pages` alongside the
+two real pages. Those three files are plain helper modules — none of them call `Page(...)`.
+Per ZeppOS's app.json reference, `pages` should only ever list real page entry points; Rollup
+already inlines the helpers into the two real pages via normal `import` statements (that's the
+whole point of the bundling section above). Listing them a second time as bogus "pages" made
+Zeus/QJSC compile three additional invalid, orphaned page `.bin` files with no page lifecycle —
+confirmed by decompiling a local build (5 top-level `.bin` files before the fix, 2 after, same
+byte sizes). These three entries were added in commit `3957494`, the same commit that introduced
+this symptom's mitigations — i.e. the original fix attempt likely didn't address the actual bug.
+See `CHANGELOG.md` 1.0.4 for the full before/after evidence. Not yet confirmed on physical
+hardware — re-test on a real Bip 6 before assuming this is fully resolved.
+
 **Mitigations applied (v1.0.2):**
 - `countdownWidget` is created first and always visible, even before settings are fetched, so the
   screen is never blank — it shows "Starting..." then the duration, or an error message.
@@ -146,6 +159,31 @@ Two methods are supported and both write to `settingsStorage` key `dudu_todoist_
 `app-side/index.js` reads `dudu_todoist_key` and sends it as `body.todoistApiKey` in the upload
 request to the Cloudflare worker. No app-side changes are needed regardless of which auth method
 was used.
+
+---
+
+## Zepp Flow (Voice Assistant) — Cannot Launch Third-Party Apps
+
+Attempting to open DuDu via Zepp Flow (the watch's built-in voice assistant, formerly "Zepp AI
+Flex") on a real Bip 6 returns "you can only open supported apps" — DuDu does not appear as a
+launchable target.
+
+This is a **platform limitation, not an app bug**. Findings:
+
+- Zepp Flow maps natural-language requests to a fixed set of native/first-party actions (start a
+  workout, check weather, reply to a notification, make a call, etc.). There is no documented
+  mechanism for a third-party sideloaded mini-program to register itself as a Flow-launchable
+  target.
+- `app.json`'s `module` config only supports two mutually-exclusive launch declarations: `page`
+  (normal pages — what DuDu uses) and `shortcut` (redirect to another app/native target by
+  `appId`, used for cross-app deep-linking, not voice/Flow discovery). Neither exposes any
+  Flow-registration field.
+- There is no known workaround. Users must launch DuDu from the watch's normal app list (or a
+  widget/shortcut card, if one is ever added — see ZeppOS's documented `secondary-widget` /
+  shortcut-card feature, which is a real, separate extension point unlike Flow).
+
+Do not spend further time trying to make DuDu Flow-launchable unless Zepp publishes a documented
+API for it.
 
 ---
 
