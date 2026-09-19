@@ -3,6 +3,93 @@
 All notable changes to the DuDu ZeppOS app are tracked here. Dates are in
 YYYY-MM-DD format.
 
+## [1.0.5] - 2026-09-19
+
+Release-candidate build for a renewed Zepp App Store submission. Three
+packaging/runtime defects were found and fixed; none of them reproduce under
+`zeus preview`, which is consistent with the long-standing "works in preview,
+fails once published" divergence.
+
+### Fixed
+
+- **`index.page.js` called a global `setTimeout` that ZeppOS does not
+  guarantee exists.** Lines 166 and 300 used a bare `setTimeout(...)`, while
+  every other module in the project (`recorderFacade.js`, `audioController.js`)
+  correctly imports timers from `@zos/timer`. Per ZeppOS's own Timer API
+  polyfill guidance, the global is only defined conditionally
+  (`if (typeof setTimeout === 'undefined' && isHmTimerDefined())`) — it is not
+  part of the guaranteed runtime surface. Added
+  `import { setTimeout } from "@zos/timer";`.
+  Both call sites are on the app's startup path: the `fetchSettings` callback
+  schedules the first `doStartRecordingWithRetry(3)` through it. A missing
+  global there throws a `ReferenceError` *inside an async callback*, so the
+  `try/catch` around `build()` — which only guards the synchronous widget
+  construction — cannot catch it and the on-screen "INIT ERR:" fallback never
+  fires. Verified after the fix that `index.page.bin` references `@zos/timer`.
+
+- **The built `.zab` shipped the entire plaintext source tree, including real
+  secrets.** Zeus 1.9.x embeds an `.ip-package` entry (a zip of intermediate
+  products) in the `.zab` — 149 KB of it here. It contained `app.json`,
+  `setting/index.js`, every `page/gt/home/*.js`, and **`secrets.js` with the
+  live worker URL, the 64-character worker API key, and the Todoist OAuth
+  client ID and client secret**. The Zeus build log prints a notice about
+  this and points at `zeus prune --ip`; that step is now mandatory in this
+  project's release flow and is documented in `.claude/CLAUDE.md`.
+  Running it took the package from 207,984 → 58,573 bytes and removed the
+  `"csc": ".ip-package"` key from `manifest.json`.
+  Trade-off accepted: pruning means Zepp will not auto-repackage the app for
+  other devices sharing the Bip 6's CPU/resolution. Since `app.json` targets
+  only `bip6` (all three variants — `bip6v1`/`v2`/`v3` — are present in the
+  packaged manifest), nothing is lost today.
+
+- **The previous `dist/` artifact was a preview-mode build.** The
+  `1106330-DuDu-1.0.3-…zab` sitting in `dist/` carries
+  `packageInfo.mode: "preview"` with `expiredTime: 172800` (48 hours). The
+  new 1.0.5 build carries `packageInfo.mode: "production"`. If a
+  preview-mode package was ever what got uploaded to the store, a 48-hour
+  expiry on an installed app is a plausible independent cause of the reported
+  post-publish failures. **This is a hypothesis, not a confirmed diagnosis** —
+  there is no record here of which file was actually submitted. Worth checking
+  against whatever artifact is still attached to the store listing.
+
+### Verified in the packaged output
+
+Unpacked and inspected the final `.zab` rather than trusting the build log:
+
+- `device.zip` contains exactly three bytecode files — `app.bin`,
+  `page/gt/home/index.page.bin`, `page/gt/home/audiolist.page.bin`. The three
+  stray helper `.bin` files that the 1.0.4 `app.json` fix targeted are gone
+  (the 1.0.3 package in `dist/` still has all five, which re-confirms that
+  diagnosis independently).
+- `manifest.json` reports `version.code: 5`, `name: "1.0.5"`, platform
+  `square / 390x450 / ZPS`.
+- All three Bip 6 `deviceSource` entries survive into the packaged
+  `device/app.json`.
+- Icons are 240×240 as the store requires.
+- No `.ip-package` entry remains.
+
+### Known and accepted: secrets are still readable in the settings bundle
+
+`app-side/setting.js` inside the package is **plain JavaScript, not
+bytecode** (as `.claude/CLAUDE.md` already documents for the settings page),
+and it still contains the worker URL, the worker API key, and the Todoist
+OAuth client ID and **client secret** in cleartext. `zeus prune --ip` does
+not and cannot remove these — `setting/index.js` imports them from
+`secrets.js` at build time to pre-fill the settings form and to drive the
+`Auth` component.
+
+This is acceptable for a sideloaded personal build. It is **not** acceptable
+for a public store listing: every installer can read the file and obtain
+free use of the Cloudflare Worker (and its AI quota), plus the ability to
+impersonate the Todoist OAuth application. Not changed in this pass because
+it needs a design decision, not a patch — see `TASKS.md`.
+
+### Changed
+
+- Bumped app version to 1.0.5 (code 5). 1.0.4 was built and inspected but
+  never published; its code was skipped rather than reused, so that a 1.0.4
+  upload attempt at any point in the last months cannot collide with this one.
+
 ## [Unreleased]
 
 ### Changed

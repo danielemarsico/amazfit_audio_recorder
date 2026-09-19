@@ -33,7 +33,13 @@
       "Bash(npx zeus *)",
       "Bash(zeus --version)",
       "WebFetch(domain:api.github.com)",
-      "Bash(python -c ' *)"
+      "Bash(python -c ' *)",
+      "Bash(zeus prune *)",
+      "Bash(unzip -l *)",
+      "Bash(python -m json.tool *)",
+      "Bash(python -m json.tool .claude/settings.local.json)",
+      "Bash(git add *)",
+      "Bash(git commit *)"
     ]
   }
 }

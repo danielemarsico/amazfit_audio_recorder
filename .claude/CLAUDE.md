@@ -7,9 +7,68 @@ prompt to select device targets). Auto-accept all pre-checked targets with:
 
 ```bash
 printf '\n' | zeus build
+printf '\n' | zeus prune --ip     # MANDATORY — see below
 ```
 
 Built packages land in `zepp_app/dist/` as `.zab` files.
+
+### `zeus prune --ip` is mandatory before distributing a build
+
+Zeus 1.9.x embeds an **`.ip-package`** entry inside the `.zab`: a zip of "intermediate products"
+containing the **entire plaintext source tree** — including `secrets.js` with the live worker URL,
+worker API key, and Todoist OAuth client ID/secret. The build log prints a notice about this and
+grants Zepp the right to repackage and redistribute those intermediates.
+
+`zeus prune --ip` strips it (measured: 207,984 → 58,573 bytes; also drops `"csc": ".ip-package"`
+from `manifest.json`). The cost is that Zepp can no longer auto-repackage the app for other
+devices with the same CPU/resolution — irrelevant while `app.json` targets only `bip6`, but it
+means **every new target must be built explicitly**.
+
+Always verify by listing the archive before uploading:
+
+```bash
+unzip -l zepp_app/dist/<pkg>.zab     # expect exactly: <hash>.zpk + manifest.json
+```
+
+### Verify `packageInfo.mode` is `production`
+
+Unpack the `.zab` and check `device/app.json` → `packageInfo.mode`. It must be `"production"`.
+A `"preview"`-mode package carries `expiredTime: 172800` (48 h) and will stop working on an
+installed device two days later. The `1.0.3` artifact left in `dist/` is a preview-mode build —
+if that is what was once uploaded to the store, it alone would explain a post-publish failure.
+`zeus build` on 1.9.0 has no mode flag and always emits production; older CLI versions and
+`zeus preview` do not.
+
+### Pre-submission package checklist
+
+Unpack the final `.zab` (`.zab` → `<hash>.zpk` → `device.zip` / `app-side.zip`) and confirm:
+
+| Check | Expected |
+|---|---|
+| `.zab` entries | `<hash>.zpk` + `manifest.json` only — **no `.ip-package`** |
+| `device/*.bin` count | exactly 3: `app.bin`, `index.page.bin`, `audiolist.page.bin` |
+| `packageInfo.mode` | `production` |
+| `version.code` | strictly greater than any previously uploaded code |
+| `platforms` | all three Bip 6 entries (`bip6v1`/`v2`/`v3`) present |
+| `assets/icon.png` | 240×240 |
+
+Store-side requirements (from the [distribution docs](https://docs.zepp.com/docs/distribute/)):
+icon 240×240 circular PNG with transparent background, screenshots 360×360 PNG with transparent
+background (3+ recommended), plus country, category, language, privacy statement, permission
+declaration and SDK disclosure. Review takes 1–5 working days.
+
+### Timers: always import from `@zos/timer`
+
+Never use a bare global `setTimeout` / `setInterval`. ZeppOS only defines them conditionally (its
+own [Timer API polyfill doc](https://docs.zepp.com/docs/1.0/guides/best-practice/polyfill/setTimeout/)
+guards with `if (typeof setTimeout === 'undefined' && isHmTimerDefined())`), so the global is not
+part of the guaranteed runtime surface and may be present in preview but absent in a packaged
+build. This bit `index.page.js` on its startup path and was fixed in 1.0.5.
+
+Note the failure shape: a `ReferenceError` thrown inside an **async callback** is not caught by
+the `try/catch` around `build()`, which only guards synchronous widget construction. The
+on-screen `"INIT ERR:"` fallback therefore never fires — the page just silently stops advancing.
+When adding error surfaces, remember they cover the synchronous path only.
 
 ---
 
@@ -139,11 +198,35 @@ platform issue with the `Auth` component under certain conditions.
 
 ### General debugging constraint
 
-**There is no way to attach a debugger to a packaged ZeppOS app.** Console output is only
-visible during `zeus preview`. When diagnosing packaged-only failures:
-1. Add `console.log` calls with full error strings before building.
-2. Reproduce under `zeus preview` where possible (not all failures reproduce).
-3. Use on-screen widget text as a last-resort crash indicator.
+You cannot attach an interactive debugger to a packaged ZeppOS app, but the earlier claim here
+that packaged apps produce **no** obtainable logs was too strong — see Developer Mode below.
+When diagnosing packaged-only failures:
+1. Try Zepp App Developer Mode log collection (below) — this is the only route to real
+   on-device logs from an installed build.
+2. Add `console.log` calls with full error strings before building.
+3. Reproduce under `zeus preview` where possible (not all failures reproduce).
+4. Use on-screen widget text as a crash indicator — but note it only covers the **synchronous**
+   path (see the timer note under Build System).
+
+### Zepp App Developer Mode — real-device logs
+
+Per the [Zepp App Developer Mode docs](https://docs.zepp.com/docs/guides/tools/zepp-app/),
+enable it in the phone app: **Profile → Settings → About → tap the Zepp icon 7×**.
+
+It provides:
+- **Real device logs** — tap the Mini Program icon, then the bottom-right button to *start
+  collecting logs*. Both **Device App** and **Side Service** logs are available.
+- **Screenshots** of the watch screen, saved to the phone gallery.
+- **Bridge mode** for advanced debugging connections.
+- **API level query** via the Device information button.
+
+Two caveats:
+- The **Settings app log is explicitly unavailable** ("temporarily"), so the settings WebView
+  still cannot be traced this way — relevant to the Todoist OAuth `invalid_client` issue, which
+  lives precisely there.
+- The docs describe log collection in the context of Zeus-preview and Watchface-Maker installs
+  and do not explicitly promise it works for a store-installed package. Untested here — try it
+  first when a packaged build misbehaves, and record the result in this file.
 
 ---
 

@@ -2,6 +2,7 @@ import { createWidget, widget, align, prop } from "@zos/ui";
 import { push } from "@zos/router";
 import { getDeviceInfo } from "@zos/device";
 import { setPageBrightTime, pauseDropWristScreenOff } from "@zos/display";
+import { setTimeout } from "@zos/timer";
 import { BasePage } from "@zeppos/zml/base-page";
 import {
   getRecordDuration, syncSingleFile, fetchSettings,

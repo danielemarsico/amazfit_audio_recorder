@@ -1,6 +1,41 @@
 # Open Tasks
 
-No open tasks for the watch app itself.
+## Decide how to handle secrets before a *public* store listing
+
+**Blocking for a public listing; not blocking for a sideloaded personal build.**
+
+`app-side/setting.js` inside the packaged `.zab` is plain JavaScript, not bytecode, and contains
+in cleartext:
+
+- the Cloudflare Worker URL,
+- the 64-character worker API key,
+- the Todoist OAuth **client ID and client secret**.
+
+They get there because `setting/index.js` imports them from `secrets.js` at build time, to
+pre-fill the settings form and to configure the `Auth` component. `zeus prune --ip` removes the
+separate plaintext-source leak in the `.ip-package` (done in 1.0.5) but cannot touch these — the
+settings page genuinely needs them at runtime.
+
+Consequence of publishing as-is: anyone who installs DuDu can extract the key and use the worker
+(and its Workers AI quota) for free, and can impersonate the Todoist OAuth app.
+
+Options, roughly in increasing order of effort:
+
+1. **Ship no defaults.** Drop `UPLOADURL`/`APIKEY` from `setting/index.js` and require each user
+   to paste their own worker URL and key. Honest for an open-source app where users self-host the
+   worker — the [dudu-worker](https://github.com/danielemarsico/dudu-worker) repo already
+   documents deployment. Removes the key leak entirely. Leaves the Todoist `clientSecret`.
+2. **Drop the OAuth path, keep the manual API-key fallback.** The fallback already exists and is
+   documented as the more reliable of the two (OAuth returns `invalid_client` in packaged builds
+   anyway). Removing the `Auth` component removes the client secret from the bundle and deletes
+   the unresolved OAuth bug at the same time.
+3. **Keep a hosted worker but stop treating the key as a secret** — rotate to a per-install token
+   the worker issues, and rate-limit per token. Most work; only worth it if DuDu is meant to be
+   turnkey for non-technical users.
+
+1 + 2 together clear the bundle of every secret and are mostly deletions. Rotate the current
+worker API key and the Todoist OAuth credentials regardless, since they have already been built
+into distributed artifacts.
 
 ## Moved: AI post-processing for the audio-to-note pipeline
 
