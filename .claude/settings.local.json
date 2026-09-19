@@ -39,7 +39,8 @@
       "Bash(python -m json.tool *)",
       "Bash(python -m json.tool .claude/settings.local.json)",
       "Bash(git add *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(git push *)"
     ]
   }
 }
